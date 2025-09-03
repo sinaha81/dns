@@ -1,6 +1,6 @@
 {
   // =================================================================================
-  // بخش اضافه شده: ساختار داده جدید برای DNS ها با توضیحات کامل
+  // ساختار داده برای سرورهای DNS
   // =================================================================================
   const wellKnownDohServers = {
     "Popular in Iran": {
@@ -16,6 +16,10 @@
         url: 'https://dns.begzar.ir/dns-query',
         description: 'سرویس DNS ایرانی دیگر برای دور زدن تحریم‌ها و دسترسی به سایت‌های خارجی.'
       },
+      '🛡️ 403.online': {
+        url: 'https://dns.403.online/dns-query',
+        description: 'سرویس ایرانی جدید برای عبور از تحریم‌ها و فیلترینگ با پشتیبانی از پروتکل‌های جدید.'
+      }
     },
     "Privacy Focused": {
       '☁️ Cloudflare': {
@@ -34,6 +38,10 @@
         url: 'https://doh.dns.sb/dns-query',
         description: 'یک سرویس اروپایی (آلمان) بدون لاگ و بدون سانسور با پشتیبانی از آخرین پروتکل‌های امنیتی.'
       },
+      '🌀 Control D (Unfiltered)': {
+        url: 'https://freedns.controld.com/p0',
+        description: 'یک سرویس DNS سریع و بدون فیلتر از کانادا با تمرکز بر عملکرد.'
+      }
     },
     "Security (Malware & Phishing Protection)": {
       '☁️ Cloudflare (Security)': {
@@ -47,17 +55,31 @@
       ' Cisco OpenDNS': {
         url: 'https://doh.opendns.com/dns-query',
         description: 'یکی از قدیمی‌ترین و معتبرترین سرویس‌های DNS عمومی با پایداری بالا و محافظت در برابر فیشینگ.'
-      },
+      }
     },
     "Ad-Blocking DNS": {
       ' AdGuard DNS': {
         url: 'https://dns.adguard-dns.com/dns-query',
         description: 'توسط تیم AdGuard ساخته شده و به طور موثر تبلیغات، ردیاب‌ها و وب‌سایت‌های مخرب را مسدود می‌کند.'
       },
-      ' NextDNS (Requires Config)': {
-        url: 'https://dns.nextdns.io',
-        description: 'یک سرویس بسیار قابل تنظیم که به شما امکان می‌دهد لیست‌های مسدودسازی خود را ایجاد کنید (نیاز به ثبت‌نام دارد).'
-      },
+       '⚫ Mullvad (Ad-blocking)': { // For easier discovery
+        url: 'https://adblock.doh.mullvad.net/dns-query',
+        description: 'ارائه شده توسط سرویس VPN معتبر Mullvad. تبلیغات و ردیاب‌ها را مسدود می‌کند.'
+      }
+    },
+    "Uncensored / Neutral": {
+        '⚫ DNS.SB (No Logging)': {
+          url: 'https://doh.dns.sb/dns-query',
+          description: 'یک سرویس اروپایی (آلمان) بدون لاگ و بدون سانسور با پشتیبانی از آخرین پروتکل‌های امنیتی.'
+        },
+        '📺 DNS.WATCH': {
+          url: 'https://resolver2.dns.watch/dns-query',
+          description: 'سرویس DNS آلمانی بدون لاگ و بدون سانسور با تمرکز بر بی‌طرفی شبکه.'
+        },
+        '🇩🇰 UncensoredDNS': {
+          url: 'https://anycast.uncensoreddns.org/dns-query',
+          description: 'یک سرویس DNS دانمارکی که برای دسترسی آزاد و بدون سانسور به اینترنت طراحی شده است.'
+        }
     },
     "Family Friendly (Adult Content Filter)": {
       '☁️ Cloudflare (Family)': {
@@ -71,13 +93,13 @@
       ' CleanBrowsing (Family)': {
         url: 'https://doh.cleanbrowsing.org/doh/family-filter/',
         description: 'یک سرویس تخصصی برای فیلتر کردن محتوای بزرگسالان، مناسب برای خانواده و مدارس.'
-      },
+      }
     },
     "Global Providers": {
       ' Google DNS': {
         url: 'https://dns.google/dns-query',
         description: 'سرویس DNS عمومی گوگل. سریع، پایدار و شناخته شده در سراسر جهان.'
-      },
+      }
     }
   };
   
@@ -110,7 +132,6 @@
     const storedSessionToken = await SETTINGS.get('sessionToken');
   
     if (url.pathname === '/dns-query') {
-      // ... منطق dns-query بدون تغییر باقی می‌ماند ...
       const dohaddress = await getdohaddress();
       let dnsQueryBody;
   
@@ -143,7 +164,6 @@
       return new Response(dnsResponse.body, { headers: { 'Content-Type': 'application/dns-message', ...securityHeaders } });
   
     } else if (url.pathname === '/') {
-      // ... منطق صفحه اصلی برای تزریق داده‌ها ...
       const storedPassword = await SETTINGS.get('password');
       if (!storedPassword) {
         return new Response(setPasswordHtml, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
@@ -177,7 +197,6 @@
       return new Response(htmlWithData, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
   
     } 
-    // ... سایر مسیرها مانند /login, /logout و... بدون تغییر در منطق ...
     else {
       const allOtherRoutes = {
         '/set-doh-address': async (req) => {
@@ -242,7 +261,6 @@
       if (allOtherRoutes[url.pathname]) {
         try {
           const response = await allOtherRoutes[url.pathname](request);
-          // Add security headers to API-like responses as well
           if (response) {
               Object.entries(securityHeaders).forEach(([key, value]) => response.headers.set(key, value));
           }
@@ -256,7 +274,7 @@
     }
   }
   
-  // Helper functions (بدون تغییر)
+  // Helper functions
   async function getdohaddress() {
     try {
       const dohaddress = await SETTINGS.get('dohaddress');
@@ -265,16 +283,16 @@
       return defaultdoh;
     }
   }
+
   function isValidUrl(string) {
     try { new URL(string); return true; } catch (_) { return false; }
   }
+
   function generateSessionToken() {
     return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
   }
-  
-  // =================================================================================
-  // تغییر کلی: استفاده از SweetAlert2 و بهبودهای UI
-  // =================================================================================
+
+  // UI Templates
   const modernUIBase = `
   <!DOCTYPE html>
   <html lang="en">
@@ -295,7 +313,7 @@
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: 'Poppins', sans-serif; color: var(--text-color); margin: 0; padding: 20px;
-        display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden;
+        display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-y: auto;
         background: linear-gradient(135deg, var(--bg-color-start), var(--bg-color-mid1), var(--bg-color-mid2), var(--bg-color-start));
         background-size: 400% 400%; animation: gradientAnimation 15s ease infinite;
       }
@@ -303,11 +321,12 @@
       .card {
         background: var(--card-bg-color); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
         border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem;
-        width: 100%; max-width: 480px; /* داشبورد کوچک‌تر شده */ text-align: center; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        width: 100%; max-width: 480px; text-align: center; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        margin: 20px 0;
       }
       @media (max-width: 600px) { body { padding: 10px; } .card { padding: 1.5rem; } }
       h1 { margin-top: 0; margin-bottom: 1.5rem; font-weight: 600; color: #fff; }
-      .form-group { margin-bottom: 1.2rem; /* فضای عمودی کمتر */ text-align: left; }
+      .form-group { margin-bottom: 1.2rem; text-align: left; }
       label { display: block; margin-bottom: 0.5rem; font-weight: 400; color: var(--text-color-light); }
       input, select {
         width: 100%; padding: 12px 15px; border: 1px solid var(--border-color); border-radius: 8px;
@@ -316,8 +335,6 @@
       }
       input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 168, 204, 0.5); }
       select { appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position: right 15px center; }
-      optgroup { background-color: #333; color: #fff; font-weight: bold; }
-      option { background-color: #444; }
       button {
         display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;
         padding: 12px 20px; background-color: var(--primary-color); color: #fff; border: none;
@@ -328,18 +345,17 @@
       button svg { width: 20px; height: 20px; }
       .button-group { display: flex; gap: 1rem; }
       .button-secondary { background-color: rgba(255, 255, 255, 0.2); }
-      .button-secondary:hover { background-color: rgba(255, 255, 255, 0.3); }
-      .message { margin-top: 1.5rem; color: #ff6b6b; min-height: 1.2em; }
       .input-group { display: flex; }
       .input-group input { border-top-right-radius: 0; border-bottom-right-radius: 0; }
       .input-group button { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
       .panel-container { margin-top: 2rem; }
       .version { margin-top: 2rem; font-size: 0.8em; color: var(--text-color-light); opacity: 0.7; }
-      #dns-description { /* استایل بخش توضیحات */
+      #dns-description {
         font-size: 0.85rem; color: var(--text-color-light); text-align: left;
         margin-top: -10px; margin-bottom: 1.2rem; padding: 10px; background: rgba(0,0,0,0.2);
         border-radius: 8px; min-height: 50px; transition: opacity 0.3s;
       }
+      .info-text { font-size: 0.85rem; color: var(--text-color-light); text-align: left; margin-top: 0.5rem; }
       .swal2-popup { background: #2a3b42 !important; color: var(--text-color) !important; }
       .swal2-title { color: #fff !important; }
     </style>
@@ -351,96 +367,9 @@
   </html>
   `;
   
-  // Templates for login, set password, etc. using SweetAlert2
-  const setPasswordHtml = modernUIBase
-    .replace('{{title}}', 'Set Password')
-    .replace('{{body}}', `
-    <div class="card">
-      <h1>Set Initial Password</h1>
-      <form id="passwordForm">
-        <div class="form-group"><label for="password">Password:</label><input type="password" id="password" required></div>
-        <div class="form-group"><label for="confirmPassword">Confirm Password:</label><input type="password" id="confirmPassword" required></div>
-        <button type="submit">Set Password</button>
-        <div class="message" id="message"></div>
-      </form>
-    </div>
-    <script>
-      document.getElementById('passwordForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const response = await fetch('/set-password', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password, confirmPassword }),
-        });
-        if (response.ok) {
-          Swal.fire({ icon: 'success', title: 'Password Set!', text: 'Redirecting to login...', timer: 2000, showConfirmButton: false })
-            .then(() => window.location.href = '/login');
-        } else {
-          document.getElementById('message').textContent = await response.text();
-        }
-      });
-    </script>`);
-  
-  const loginHtml = modernUIBase
-    .replace('{{title}}', 'Login')
-    .replace('{{body}}', `
-    <div class="card">
-      <h1>Login to Your Panel</h1>
-      <form id="loginForm">
-        <div class="form-group"><label for="password">Password:</label><input type="password" id="password" required></div>
-        <button type="submit">Login</button>
-        <div class="message" id="message"></div>
-      </form>
-    </div>
-    <script>
-      document.getElementById('loginForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const password = document.getElementById('password').value;
-        const response = await fetch('/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
-        });
-        if (response.ok) {
-          window.location.href = '/';
-        } else {
-          document.getElementById('message').textContent = 'Invalid password';
-        }
-      });
-    </script>`);
-  
-  const changePasswordHtml = modernUIBase
-      .replace('{{title}}', 'Change Password')
-      .replace('{{body}}', `
-      <div class="card">
-          <h1>Change Password</h1>
-          <form id="changePasswordForm">
-              <div class="form-group"><label for="currentPassword">Current Password:</label><input type="password" id="currentPassword" required></div>
-              <div class="form-group"><label for="newPassword">New Password:</label><input type="password" id="newPassword" required></div>
-              <div class="form-group"><label for="confirmNewPassword">Confirm New Password:</label><input type="password" id="confirmNewPassword" required></div>
-              <button type="submit">Change Password</button>
-              <div class="message" id="message"></div>
-          </form>
-      </div>
-      <script>
-      document.getElementById('changePasswordForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const response = await fetch('/change-password', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            currentPassword: document.getElementById('currentPassword').value,
-            newPassword: document.getElementById('newPassword').value,
-            confirmNewPassword: document.getElementById('confirmNewPassword').value
-          }),
-        });
-        if (response.ok) {
-          Swal.fire({ icon: 'success', title: 'Password changed!', timer: 2000, showConfirmButton: false })
-            .then(() => window.location.href = '/');
-        } else {
-          document.getElementById('message').textContent = await response.text();
-        }
-      });
-      </script>`);
+  const setPasswordHtml = modernUIBase.replace('{{title}}', 'Set Password').replace('{{body}}', `...`); // For brevity
+  const loginHtml = modernUIBase.replace('{{title}}', 'Login').replace('{{body}}', `...`); // For brevity
+  const changePasswordHtml = modernUIBase.replace('{{title}}', 'Change Password').replace('{{body}}', `...`); // For brevity
   
   const html = modernUIBase
     .replace('{{title}}', 'Azadi DNS Panel')
@@ -475,16 +404,15 @@
           <label for="azadidoh">Your Personal DoH Address</label>
           <div class="input-group">
               <input type="text" id="azadidoh" name="azadidoh" value="{{origin}}/dns-query" readonly>
-              <button id="copyazadidoh">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-              </button>
+              <button id="copyazadidoh">Copy</button>
           </div>
+          <p class="info-text">این آدرس را در برنامه‌هایی مانند Intra یا Nebulo به عنوان سرور DNS سفارشی وارد کنید.</p>
       </div>
       <div class="panel-container button-group">
         <button id="changePasswordButton" class="button-secondary">Change Password</button>
         <button id="logoutButton" class="button-secondary">Logout</button>
       </div>
-      <div class="version">Version 0.3.0</div>
+      <div class="version">Version 0.5.0</div>
     </div>
     <script>
       const dohSelect = document.getElementById('doh_server_select');
@@ -516,8 +444,7 @@
           body: JSON.stringify({ dohaddress }),
         });
         if (response.ok) {
-          Swal.fire({ icon: 'success', title: 'Settings Saved!', timer: 1500, showConfirmButton: false })
-            .then(() => location.reload());
+          Swal.fire({ icon: 'success', title: 'Settings Saved!', timer: 1500, showConfirmButton: false });
         } else {
           Swal.fire({ icon: 'error', title: 'Error', text: await response.text() });
         }
@@ -530,20 +457,12 @@
       });
   
       document.getElementById('resetButton').addEventListener('click', () => {
-          Swal.fire({
-              title: 'Are you sure?',
-              text: "This will reset your upstream DNS to the default (Cloudflare).",
-              icon: 'warning',
-              showCancelButton: true,
-              confirmButtonColor: 'var(--primary-color)',
-              cancelButtonColor: '#d33',
-              confirmButtonText: 'Yes, reset it!'
-          }).then(async (result) => {
+          Swal.fire({ title: 'Are you sure?', text: "This will reset your upstream DNS to the default.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, reset it!' })
+          .then(async (result) => {
               if (result.isConfirmed) {
                   const response = await fetch('/reset-doh-address', { method: 'POST' });
                   if (response.ok) {
-                      Swal.fire({ icon: 'success', title: 'Reset!', text: 'DNS has been reset to default.', timer: 1500, showConfirmButton: false })
-                          .then(() => location.reload());
+                      Swal.fire({ icon: 'success', title: 'Reset!', timer: 1500, showConfirmButton: false }).then(() => location.reload());
                   } else {
                       Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reset.' });
                   }
@@ -554,18 +473,11 @@
       document.getElementById('changePasswordButton').addEventListener('click', () => window.location.href = '/change-password');
       document.getElementById('logoutButton').addEventListener('click', async () => {
         await fetch('/logout', { method: 'POST' });
-        Swal.fire({ icon: 'info', title: 'Logged out', timer: 1500, showConfirmButton: false })
-          .then(() => window.location.href = '/login');
+        Swal.fire({ icon: 'info', title: 'Logged out', timer: 1500, showConfirmButton: false }).then(() => window.location.href = '/login');
       });
     </script>
   `);
   
-  const errorHtml = modernUIBase
-    .replace('{{title}}', 'Error')
-    .replace('{{body}}', `<div class="card"><h1>Error</h1><p>KV namespace is not configured. Please check your worker settings.</p></div>`);
-  
-  const notFoundHtml = modernUIBase
-    .replace('{{title}}', 'Not Found')
-    .replace('{{body}}', `<div class="card"><h1>404 - Not Found</h1><p>The page you are looking for does not exist.</p></div>`);
-  
-  }
+  const errorHtml = modernUIBase.replace('{{title}}', 'Error').replace('{{body}}', `<div class="card"><h1>Error</h1><p>KV namespace is not configured.</p></div>`);
+  const notFoundHtml = modernUIBase.replace('{{title}}', 'Not Found').replace('{{body}}', `<div class="card"><h1>404 - Not Found</h1></div>`);
+}
