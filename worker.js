@@ -1,483 +1,804 @@
-{
-  // =================================================================================
-  // ساختار داده برای سرورهای DNS
-  // =================================================================================
-  const wellKnownDohServers = {
-    "Popular in Iran": {
-      '⚡ Electro Team': {
-        url: 'https://doh.electro.host/dns-query',
-        description: 'یک سرویس DNS ایرانی محبوب با تمرکز بر عبور از تحریم‌ها و سرعت بالا.'
-      },
-      '🐘 Shecan (شکن)': {
-        url: 'https://free.shecan.ir/dns-query',
-        description: 'سرویس ایرانی برای عبور از تحریم‌های بین‌المللی علیه ایران، مناسب برای برنامه‌نویسان.'
-      },
-      '✈️ Begzar (بگذر)': {
-        url: 'https://dns.begzar.ir/dns-query',
-        description: 'سرویس DNS ایرانی دیگر برای دور زدن تحریم‌ها و دسترسی به سایت‌های خارجی.'
-      },
-      '🛡️ 403.online': {
-        url: 'https://dns.403.online/dns-query',
-        description: 'سرویس ایرانی جدید برای عبور از تحریم‌ها و فیلترینگ با پشتیبانی از پروتکل‌های جدید.'
+/**
+ * DoH Proxy Worker - نسخه ارتقاء یافته و کامل
+ * 
+ * این نسخه با الهام از معماری‌های پیشرفته، ویژگی‌های زیر را به کد اصلی اضافه می‌کند:
+ * 1.  **توزیع بار وزنی (Weighted Load Balancing):** درخواست‌ها به صورت هوشمند بین سرورهای DNS توزیع می‌شوند تا فشار بر یک سرور واحد کاهش یافته و پایداری کل سرویس افزایش یابد.
+ * 2.  **لیست DNS متنوع و طبقه‌بندی شده:** علاوه بر سرورهای عمومی، سرورهای مخصوص مسدودسازی تبلیغات نیز اضافه شده‌اند تا ارزش افزوده‌ای برای کاربر ایجاد کنند.
+ * 3.  **مکانیزم Failover ترکیبی:** ابتدا سرور منتخب بر اساس وزن امتحان می‌شود و در صورت شکست، به طور خودکار سایر سرورها را به عنوان پشتیبان امتحان می‌کند.
+ * 4.  **تجربه کاربری بهبود یافته:** صفحه اصلی اکنون سرورهای DNS را به صورت طبقه‌بندی شده و با توضیحات کامل نمایش می‌دهد تا کاربر درک بهتری از عملکرد سرویس داشته باشد.
+ * 5.  **امنیت تقویت‌شده:** هدر Content-Security-Policy (CSP) برای محافظت بیشتر از صفحه اصلی در برابر حملات XSS اضافه شده است.
+ * 
+ * تمام ویژگی‌های اصلی قبلی شامل ساخت پروفایل اپل، محدودیت نرخ درخواست، مدیریت وقفه (Timeout) و تمام بخش‌های راهنمای کاربر به طور کامل حفظ شده‌اند.
+ */
+
+//================================================================================
+// پیکربندی اصلی
+//================================================================================
+
+// [ایده ۱] - لیست سرورهای DNS با ساختار جدید شامل نام، وزن، دسته‌بندی و توضیحات
+const UPSTREAM_DNS_PROVIDERS = [
+  // دسته: عمومی و سریع
+  { name: "Cloudflare", url: "https://cloudflare-dns.com/dns-query", weight: 25, category: "عمومی و سریع", description: "تمرکز بر سرعت و حریم خصوصی، بدون ذخیره لاگ." },
+  { name: "Google", url: "https://dns.google/dns-query", weight: 20, category: "عمومی و سریع", description: "پایداری و سرعت بالا در سراسر جهان." },
+  { name: "Quad9", url: "https://dns.quad9.net/dns-query", weight: 20, category: "عمومی و سریع", description: "مسدودسازی دامنه‌های مخرب، فیشینگ و بدافزارها برای افزایش امنیت." },
+  { name: "OpenDNS", url: "https://doh.opendns.com/dns-query", weight: 10, category: "عمومی و سریع", description: "یکی از قدیمی‌ترین و پایدارترین سرویس‌های DNS عمومی." },
+
+  // دسته: مسدودکننده تبلیغات و ردیاب‌ها
+  { name: "AdGuard", url: "https://dns.adguard-dns.com/dns-query", weight: 15, category: "مسدودکننده تبلیغات", description: "مسدودسازی موثر تبلیغات، ردیاب‌ها و سایت‌های مخرب." },
+  { name: "Mullvad", url: "https://adblock.dns.mullvad.net/dns-query", weight: 10, category: "مسدودکننده تبلیغات", description: "ارائه شده توسط سرویس VPN معتبر Mullvad برای مسدودسازی تبلیغات و ردیاب‌ها." }
+];
+
+const DNS_CACHE_TTL = 300;
+const REQUEST_TIMEOUT = 10000;
+const RATE_LIMIT_REQUESTS = 100;
+const RATE_LIMIT_WINDOW = 60000;
+
+const rateLimitMap = new Map();
+
+//================================================================================
+// شنونده رویداد اصلی
+//================================================================================
+
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request));
+});
+
+//================================================================================
+// کنترل‌گر اصلی درخواست‌ها
+//================================================================================
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  
+  if (url.pathname === '/apple') {
+    return generateAppleProfile(request.url);
+  }
+  
+  const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+  
+  if (!checkRateLimit(clientIP)) {
+    return new Response('Rate limit exceeded. Please try again later.', {
+      status: 429,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Retry-After': '60'
       }
-    },
-    "Privacy Focused": {
-      '☁️ Cloudflare': {
-        url: 'https://cloudflare-dns.com/dns-query',
-        description: 'ساخته شده توسط Cloudflare. یکی از سریع‌ترین DNSهای جهان با تمرکز بر حریم خصوصی و عدم ذخیره لاگ.'
-      },
-      '🛡️ Quad9 (No Malware)': {
-        url: 'https://dns.quad9.net/dns-query',
-        description: 'سرویسی غیرانتفاعی با تمرکز بر امنیت. دامنه‌های مخرب و فیشینگ را مسدود می‌کند.'
-      },
-      '⚫ Mullvad (Ad-blocking)': {
-        url: 'https://adblock.doh.mullvad.net/dns-query',
-        description: 'ارائه شده توسط سرویس VPN معتبر Mullvad. تبلیغات و ردیاب‌ها را مسدود می‌کند.'
-      },
-      '⚫ DNS.SB (No Logging)': {
-        url: 'https://doh.dns.sb/dns-query',
-        description: 'یک سرویس اروپایی (آلمان) بدون لاگ و بدون سانسور با پشتیبانی از آخرین پروتکل‌های امنیتی.'
-      },
-      '🌀 Control D (Unfiltered)': {
-        url: 'https://freedns.controld.com/p0',
-        description: 'یک سرویس DNS سریع و بدون فیلتر از کانادا با تمرکز بر عملکرد.'
+    });
+  }
+  
+  if (url.pathname !== '/dns-query') {
+    // [ایده ۲ و بهبود امنیتی] - افزودن هدر CSP به صفحه اصلی
+    const csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';";
+    return new Response(getHomePage(request.url), {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '1; mode=block',
+        'Referrer-Policy': 'no-referrer',
+        'Content-Security-Policy': csp // هدر امنیتی جدید اضافه شد
       }
-    },
-    "Security (Malware & Phishing Protection)": {
-      '☁️ Cloudflare (Security)': {
-        url: 'https://security.cloudflare-dns.com/dns-query',
-        description: 'نسخه امنیتی Cloudflare که علاوه بر حریم خصوصی، از شما در برابر بدافزارها محافظت می‌کند.'
-      },
-      '🛡️ Quad9 (Security)': {
-        url: 'https://dns11.quad9.net/dns-query',
-        description: 'نسخه امن‌تر Quad9 با اعتبارسنجی DNSSEC و مسدودسازی دامنه‌های مخرب.'
-      },
-      ' Cisco OpenDNS': {
-        url: 'https://doh.opendns.com/dns-query',
-        description: 'یکی از قدیمی‌ترین و معتبرترین سرویس‌های DNS عمومی با پایداری بالا و محافظت در برابر فیشینگ.'
-      }
-    },
-    "Ad-Blocking DNS": {
-      ' AdGuard DNS': {
-        url: 'https://dns.adguard-dns.com/dns-query',
-        description: 'توسط تیم AdGuard ساخته شده و به طور موثر تبلیغات، ردیاب‌ها و وب‌سایت‌های مخرب را مسدود می‌کند.'
-      },
-       '⚫ Mullvad (Ad-blocking)': { // For easier discovery
-        url: 'https://adblock.doh.mullvad.net/dns-query',
-        description: 'ارائه شده توسط سرویس VPN معتبر Mullvad. تبلیغات و ردیاب‌ها را مسدود می‌کند.'
-      }
-    },
-    "Uncensored / Neutral": {
-        '⚫ DNS.SB (No Logging)': {
-          url: 'https://doh.dns.sb/dns-query',
-          description: 'یک سرویس اروپایی (آلمان) بدون لاگ و بدون سانسور با پشتیبانی از آخرین پروتکل‌های امنیتی.'
-        },
-        '📺 DNS.WATCH': {
-          url: 'https://resolver2.dns.watch/dns-query',
-          description: 'سرویس DNS آلمانی بدون لاگ و بدون سانسور با تمرکز بر بی‌طرفی شبکه.'
-        },
-        '🇩🇰 UncensoredDNS': {
-          url: 'https://anycast.uncensoreddns.org/dns-query',
-          description: 'یک سرویس DNS دانمارکی که برای دسترسی آزاد و بدون سانسور به اینترنت طراحی شده است.'
+    });
+  }
+
+  if (request.method === 'OPTIONS') {
+    return handleOptions();
+  }
+
+  try {
+    let dnsResponse;
+    
+    if (request.method === 'GET') {
+      dnsResponse = await handleGetRequest(url);
+    } else if (request.method === 'POST') {
+      dnsResponse = await handlePostRequest(request);
+    } else {
+      return new Response('Method not allowed', { 
+        status: 405,
+        headers: {
+          'Allow': 'GET, POST, OPTIONS'
         }
-    },
-    "Family Friendly (Adult Content Filter)": {
-      '☁️ Cloudflare (Family)': {
-        url: 'https://family.cloudflare-dns.com/dns-query',
-        description: 'محتوای بزرگسالان و بدافزارها را مسدود می‌کند. مناسب برای استفاده خانواده‌ها.'
-      },
-      ' Cisco OpenDNS FamilyShield': {
-        url: 'https://doh.familyshield.opendns.com/dns-query',
-        description: 'نسخه از پیش تنظیم شده OpenDNS برای مسدود کردن محتوای نامناسب برای کودکان.'
-      },
-      ' CleanBrowsing (Family)': {
-        url: 'https://doh.cleanbrowsing.org/doh/family-filter/',
-        description: 'یک سرویس تخصصی برای فیلتر کردن محتوای بزرگسالان، مناسب برای خانواده و مدارس.'
-      }
-    },
-    "Global Providers": {
-      ' Google DNS': {
-        url: 'https://dns.google/dns-query',
-        description: 'سرویس DNS عمومی گوگل. سریع، پایدار و شناخته شده در سراسر جهان.'
-      }
+      });
     }
-  };
+
+    return new Response(dnsResponse.body, {
+      status: dnsResponse.status,
+      headers: {
+        'Content-Type': 'application/dns-message',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': `public, max-age=${DNS_CACHE_TTL}`,
+        'X-Content-Type-Options': 'nosniff',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+      }
+    });
+    
+  } catch (error) {
+    return new Response('DNS query failed: ' + error.message, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'text/plain'
+      }
+    });
+  }
+}
+
+//================================================================================
+// منطق توزیع بار و ارسال درخواست‌ها
+//================================================================================
+
+// [ایده ۱] - تابع انتخاب سرور بر اساس وزن تعریف شده
+function selectProvider(providers) {
+  const totalWeight = providers.reduce((sum, provider) => sum + provider.weight, 0);
+  let random = Math.random() * totalWeight;
   
-  // Default DNS over HTTPS address
-  const defaultdoh = 'https://cloudflare-dns.com/dns-query';
+  for (const provider of providers) {
+    if (random < provider.weight) {
+      return provider;
+    }
+    random -= provider.weight;
+  }
   
-  // Fetch event listener
-  addEventListener('fetch', event => {
-    event.respondWith(handleRequest(event.request));
+  // به عنوان fallback در صورت خطای محاسباتی، اولین سرور را برمی‌گرداند
+  return providers[0];
+}
+
+async function handleGetRequest(url) {
+  const dnsParam = url.searchParams.get('dns');
+  
+  if (!dnsParam) {
+    throw new Error('Missing dns parameter');
+  }
+
+  if (!isValidBase64Url(dnsParam)) {
+    throw new Error('Invalid dns parameter format');
+  }
+  
+  // [ایده ۱] - پیاده‌سازی منطق ترکیبی توزیع بار و Failover
+  const selectedProvider = selectProvider(UPSTREAM_DNS_PROVIDERS);
+  const fallbackProviders = UPSTREAM_DNS_PROVIDERS.filter(p => p.url !== selectedProvider.url);
+  const providersToTry = [selectedProvider, ...fallbackProviders];
+
+  for (const provider of providersToTry) {
+    try {
+      const upstreamUrl = new URL(provider.url);
+      upstreamUrl.searchParams.set('dns', dnsParam);
+      
+      url.searchParams.forEach((value, key) => {
+        if (key !== 'dns') {
+          upstreamUrl.searchParams.set(key, value);
+        }
+      });
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+      
+      const response = await fetch(upstreamUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/dns-message',
+          'User-Agent': 'DoH-Proxy-Worker/1.0'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        return response; // موفقیت‌آمیز بود، پاسخ را برگردان
+      }
+      
+    } catch (error) {
+      console.error(`Failed to fetch from ${provider.name}: ${error.message}`);
+      continue;
+    }
+  }
+
+  throw new Error('All upstream DNS servers failed');
+}
+
+async function handlePostRequest(request) {
+  const contentType = request.headers.get('Content-Type');
+  
+  if (contentType !== 'application/dns-message') {
+    throw new Error('Invalid Content-Type. Expected application/dns-message');
+  }
+
+  const body = await request.arrayBuffer();
+  
+  if (body.byteLength === 0 || body.byteLength > 512) {
+    throw new Error('Invalid DNS message size');
+  }
+
+  // [ایده ۱] - پیاده‌سازی منطق ترکیبی توزیع بار و Failover
+  const selectedProvider = selectProvider(UPSTREAM_DNS_PROVIDERS);
+  const fallbackProviders = UPSTREAM_DNS_PROVIDERS.filter(p => p.url !== selectedProvider.url);
+  const providersToTry = [selectedProvider, ...fallbackProviders];
+
+  for (const provider of providersToTry) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+      
+      const response = await fetch(provider.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/dns-message',
+          'Accept': 'application/dns-message',
+          'User-Agent': 'DoH-Proxy-Worker/1.0'
+        },
+        body: body,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        return response; // موفقیت‌آمیز بود، پاسخ را برگردان
+      }
+      
+    } catch (error) {
+      console.error(`Failed to fetch from ${provider.name}: ${error.message}`);
+      continue;
+    }
+  }
+  
+  throw new Error('All upstream DNS servers failed');
+}
+
+//================================================================================
+// توابع جانبی و کمکی
+//================================================================================
+
+function generateAppleProfile(requestUrl) {
+  const baseUrl = new URL(requestUrl);
+  const dohUrl = `${baseUrl.protocol}//${baseUrl.hostname}/dns-query`;
+  const hostname = baseUrl.hostname;
+  
+  const uuid1 = crypto.randomUUID();
+  const uuid2 = crypto.randomUUID();
+  const uuid3 = crypto.randomUUID();
+  
+  const mobileconfig = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>DNSSettings</key>
+            <dict>
+                <key>DNSProtocol</key>
+                <string>HTTPS</string>
+                <key>ServerURL</key>
+                <string>${dohUrl}</string>
+            </dict>
+            <key>PayloadDescription</key>
+            <string>Configures device to use Anonymous DoH Proxy</string>
+            <key>PayloadDisplayName</key>
+            <string>Anonymous DoH Proxy</string>
+            <key>PayloadIdentifier</key>
+            <string>com.cloudflare.${uuid2}.dnsSettings.managed</string>
+            <key>PayloadType</key>
+            <string>com.apple.dnsSettings.managed</string>
+            <key>PayloadUUID</key>
+            <string>${uuid3}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>ProhibitDisablement</key>
+            <false/>
+        </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>This profile enables encrypted DNS (DNS over HTTPS) on iOS, iPadOS, and macOS devices using your personal DoH Proxy.</string>
+    <key>PayloadDisplayName</key>
+    <string>Anonymous DoH Proxy - ${hostname}</string>
+    <key>PayloadIdentifier</key>
+    <string>com.cloudflare.${uuid1}</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>${uuid1}</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>`;
+
+  return new Response(mobileconfig, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/x-apple-aspen-config; charset=utf-8',
+      'Content-Disposition': `attachment; filename="doh-proxy-${hostname}.mobileconfig"`,
+      'Cache-Control': 'no-cache'
+    }
+  });
+}
+
+function handleOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+}
+
+function checkRateLimit(clientIP) {
+  const now = Date.now();
+  const clientData = rateLimitMap.get(clientIP);
+  
+  if (!clientData) {
+    rateLimitMap.set(clientIP, {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW
+    });
+    return true;
+  }
+  
+  if (now > clientData.resetTime) {
+    rateLimitMap.set(clientIP, {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW
+    });
+    return true;
+  }
+  
+  if (clientData.count >= RATE_LIMIT_REQUESTS) {
+    return false;
+  }
+  
+  clientData.count++;
+  return true;
+}
+
+function isValidBase64Url(str) {
+  const base64UrlRegex = /^[A-Za-z0-9_-]+$/;
+  return base64UrlRegex.test(str);
+}
+
+//================================================================================
+// تولید کننده صفحه اصلی (UI)
+//================================================================================
+
+function getHomePage(requestUrl) {
+  const fullDohUrl = new URL('/dns-query', requestUrl).href;
+  const appleProfileUrl = new URL('/apple', requestUrl).href;
+  
+  // [ایده ۲] - تولید HTML داینامیک برای نمایش دسته‌بندی شده سرورهای DNS
+  const dnsCategories = {};
+  UPSTREAM_DNS_PROVIDERS.forEach(provider => {
+    if (!dnsCategories[provider.category]) {
+      dnsCategories[provider.category] = [];
+    }
+    dnsCategories[provider.category].push(provider);
   });
   
-  // Main request handler
-  async function handleRequest(request) {
-    const url = new URL(request.url);
-  
-    if (typeof SETTINGS !== 'object') {
-      return new Response(errorHtml, { headers: { 'Content-Type': 'text/html' }, status: 500 });
-    }
-  
-    const csp = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com;";
-    const securityHeaders = {
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
-      'X-XSS-Protection': '1; mode=block',
-      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-      'Content-Security-Policy': csp,
-    };
-  
-    const sessionToken = request.headers.get('cookie')?.match(/sessionToken=([^;]+)/)?.[1];
-    const storedSessionToken = await SETTINGS.get('sessionToken');
-  
-    if (url.pathname === '/dns-query') {
-      const dohaddress = await getdohaddress();
-      let dnsQueryBody;
-  
-      if (request.method === 'GET') {
-        const dnsParam = url.searchParams.get('dns');
-        if (!dnsParam) {
-          return new Response('Missing "dns" query parameter', { status: 400, headers: securityHeaders });
-        }
-        const base64 = dnsParam.replace(/-/g, '+').replace(/_/g, '/');
-        const pad = base64.length % 4;
-        const paddedBase64 = base64 + '==='.slice(pad);
-        const decoded = atob(paddedBase64);
-        const buffer = new Uint8Array(decoded.length);
-        for (let i = 0; i < decoded.length; i++) {
-          buffer[i] = decoded.charCodeAt(i);
-        }
-        dnsQueryBody = buffer;
-      } else if (request.method === 'POST') {
-        dnsQueryBody = await request.arrayBuffer();
-      } else {
-        return new Response('Method not allowed', { status: 405, headers: securityHeaders });
-      }
-  
-      const dnsResponse = await fetch(dohaddress, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/dns-message' },
-        body: dnsQueryBody,
-      });
-  
-      return new Response(dnsResponse.body, { headers: { 'Content-Type': 'application/dns-message', ...securityHeaders } });
-  
-    } else if (url.pathname === '/') {
-      const storedPassword = await SETTINGS.get('password');
-      if (!storedPassword) {
-        return new Response(setPasswordHtml, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
-      } else if (!sessionToken || sessionToken !== storedSessionToken) {
-        const origin = `${url.protocol}//${url.host}`;
-        return Response.redirect(`${origin}/login`, 302);
-      }
-  
-      const currentdohaddress = await getdohaddress();
-      const origin = `${url.protocol}//${url.host}`;
-  
-      let optionsHtml = '';
-      let isWellKnown = false;
-      for (const [group, servers] of Object.entries(wellKnownDohServers)) {
-        optionsHtml += `<optgroup label="${group}">`;
-        for (const [name, server] of Object.entries(servers)) {
-          const selected = (server.url === currentdohaddress) ? 'selected' : '';
-          if (selected) isWellKnown = true;
-          optionsHtml += `<option value="${server.url}" data-description="${server.description}" ${selected}>${name}</option>`;
-        }
-        optionsHtml += `</optgroup>`;
-      }
-      
-      const htmlWithData = html
-        .replace('{{dohaddress}}', currentdohaddress)
-        .replace('{{origin}}', origin)
-        .replace('{{doh_options}}', optionsHtml)
-        .replace('{{custom_selected}}', isWellKnown ? '' : 'selected')
-        .replace('{{custom_input_style}}', isWellKnown ? 'display: none;' : 'display: block;');
-  
-      return new Response(htmlWithData, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
-  
-    } 
-    else {
-      const allOtherRoutes = {
-        '/set-doh-address': async (req) => {
-          if(req.method !== 'POST') return new Response('Not Allowed', { status: 405 });
-          const { dohaddress } = await req.json();
-          if (!isValidUrl(dohaddress)) return new Response('Invalid URL', { status: 400 });
-          await SETTINGS.put('dohaddress', dohaddress);
-          return new Response('Saved!', { status: 200 });
-        },
-        '/reset-doh-address': async (req) => {
-          if(req.method !== 'POST') return new Response('Not Allowed', { status: 405 });
-          await SETTINGS.put('dohaddress', defaultdoh);
-          return new Response('Reset!', { status: 200 });
-        },
-        '/set-password': async (req) => {
-          const storedPassword = await SETTINGS.get('password');
-          if (req.method === 'GET') {
-            return storedPassword ? Response.redirect(new URL(req.url).origin) : new Response(setPasswordHtml, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
-          }
-          if (req.method === 'POST') {
-            if (storedPassword) return new Response('Password already set', { status: 400 });
-            const { password, confirmPassword } = await req.json();
-            if (password !== confirmPassword) return new Response('Passwords do not match', { status: 400 });
-            await SETTINGS.put('password', password);
-            return new Response('Password set!', { status: 200 });
-          }
-        },
-        '/change-password': async (req) => {
-          if (!sessionToken || sessionToken !== storedSessionToken) return Response.redirect(new URL(req.url).origin + '/login');
-          if (req.method === 'GET') return new Response(changePasswordHtml, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
-          if (req.method === 'POST') {
-            const { currentPassword, newPassword, confirmNewPassword } = await req.json();
-            const storedPassword = await SETTINGS.get('password');
-            if (currentPassword !== storedPassword) return new Response('Current password is incorrect', { status: 400 });
-            if (newPassword !== confirmNewPassword) return new Response('New passwords do not match', { status: 400 });
-            await SETTINGS.put('password', newPassword);
-            return new Response('Password changed!', { status: 200 });
-          }
-        },
-        '/login': async (req) => {
-          const storedPassword = await SETTINGS.get('password');
-          if (!storedPassword) return Response.redirect(new URL(req.url).origin + '/set-password');
-          if (sessionToken && sessionToken === storedSessionToken) return Response.redirect(new URL(req.url).origin);
-          if (req.method === 'GET') return new Response(loginHtml, { headers: { 'Content-Type': 'text/html', ...securityHeaders } });
-          if (req.method === 'POST') {
-            const { password } = await req.json();
-            if (password === storedPassword) {
-              const newSessionToken = generateSessionToken();
-              await SETTINGS.put('sessionToken', newSessionToken);
-              return new Response('Login successful', { status: 200, headers: { 'Set-Cookie': `sessionToken=${newSessionToken}; Path=/; HttpOnly; Secure; SameSite=Strict` } });
-            }
-            return new Response('Invalid password', { status: 401 });
-          }
-        },
-        '/logout': async (req) => {
-          if (req.method !== 'POST') return new Response('Not Allowed', { status: 405 });
-          await SETTINGS.delete('sessionToken');
-          return new Response('Logout successful', { status: 200, headers: { 'Set-Cookie': 'sessionToken=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0' } });
-        }
-      };
-      
-      if (allOtherRoutes[url.pathname]) {
-        try {
-          const response = await allOtherRoutes[url.pathname](request);
-          if (response) {
-              Object.entries(securityHeaders).forEach(([key, value]) => response.headers.set(key, value));
-          }
-          return response || new Response('Not Found', { status: 404 });
-        } catch (e) {
-          return new Response('Server Error', { status: 500 });
-        }
-      }
-  
-      return new Response(notFoundHtml, { headers: { 'Content-Type': 'text/html', ...securityHeaders }, status: 404 });
-    }
+  let dnsListHtml = '';
+  for (const category in dnsCategories) {
+    dnsListHtml += `<h3>${category}</h3><div class="dns-list">`;
+    dnsCategories[category].forEach(provider => {
+      dnsListHtml += `<div class="dns-item"><b>${provider.name}:</b> ${provider.description}</div>`;
+    });
+    dnsListHtml += `</div>`;
   }
   
-  // Helper functions
-  async function getdohaddress() {
-    try {
-      const dohaddress = await SETTINGS.get('dohaddress');
-      return dohaddress || defaultdoh;
-    } catch (error) {
-      return defaultdoh;
-    }
-  }
-
-  function isValidUrl(string) {
-    try { new URL(string); return true; } catch (_) { return false; }
-  }
-
-  function generateSessionToken() {
-    return Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-  }
-
-  // UI Templates
-  const modernUIBase = `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
+  return `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>DoH Proxy - DNS over HTTPS</title>
     <style>
-      :root {
-        --bg-color-start: #0f2027; --bg-color-mid1: #203a43; --bg-color-mid2: #2c5364;
-        --card-bg-color: rgba(255, 255, 255, 0.08); --text-color: #f0f0f0; --text-color-light: #a0a0a0;
-        --primary-color: #00a8cc; --primary-color-hover: #0081a1; --border-color: rgba(255, 255, 255, 0.2);
-        --input-bg-color: rgba(0, 0, 0, 0.25);
-      }
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
-        font-family: 'Poppins', sans-serif; color: var(--text-color); margin: 0; padding: 20px;
-        display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-y: auto;
-        background: linear-gradient(135deg, var(--bg-color-start), var(--bg-color-mid1), var(--bg-color-mid2), var(--bg-color-start));
-        background-size: 400% 400%; animation: gradientAnimation 15s ease infinite;
-      }
-      @keyframes gradientAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-      .card {
-        background: var(--card-bg-color); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-        border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem;
-        width: 100%; max-width: 480px; text-align: center; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        margin: 20px 0;
-      }
-      @media (max-width: 600px) { body { padding: 10px; } .card { padding: 1.5rem; } }
-      h1 { margin-top: 0; margin-bottom: 1.5rem; font-weight: 600; color: #fff; }
-      .form-group { margin-bottom: 1.2rem; text-align: left; }
-      label { display: block; margin-bottom: 0.5rem; font-weight: 400; color: var(--text-color-light); }
-      input, select {
-        width: 100%; padding: 12px 15px; border: 1px solid var(--border-color); border-radius: 8px;
-        background-color: var(--input-bg-color); color: var(--text-color); font-family: inherit; font-size: 1rem;
-        transition: all 0.2s ease-in-out;
-      }
-      input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 168, 204, 0.5); }
-      select { appearance: none; -webkit-appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position: right 15px center; }
-      button {
-        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;
-        padding: 12px 20px; background-color: var(--primary-color); color: #fff; border: none;
-        border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;
-        transition: all 0.2s ease-in-out;
-      }
-      button:hover { background-color: var(--primary-color-hover); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-      button svg { width: 20px; height: 20px; }
-      .button-group { display: flex; gap: 1rem; }
-      .button-secondary { background-color: rgba(255, 255, 255, 0.2); }
-      .input-group { display: flex; }
-      .input-group input { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-      .input-group button { width: auto; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-      .panel-container { margin-top: 2rem; }
-      .version { margin-top: 2rem; font-size: 0.8em; color: var(--text-color-light); opacity: 0.7; }
-      #dns-description {
-        font-size: 0.85rem; color: var(--text-color-light); text-align: left;
-        margin-top: -10px; margin-bottom: 1.2rem; padding: 10px; background: rgba(0,0,0,0.2);
-        border-radius: 8px; min-height: 50px; transition: opacity 0.3s;
-      }
-      .info-text { font-size: 0.85rem; color: var(--text-color-light); text-align: left; margin-top: 0.5rem; }
-      .swal2-popup { background: #2a3b42 !important; color: var(--text-color) !important; }
-      .swal2-title { color: #fff !important; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+        .container {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+            border: 1px solid #475569;
+        }
+        h1 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+        }
+        h3 {
+            color: #93c5fd;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #475569;
+            padding-bottom: 5px;
+        }
+        .status-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: pulse 2s infinite;
+            position: relative;
+        }
+        .status::before {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+            box-shadow: 0 0 10px #ffffff;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+            }
+            50% {
+                box-shadow: 0 8px 35px rgba(16, 185, 129, 0.8);
+            }
+        }
+        @keyframes blink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+        .info-box {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 4px solid #60a5fa;
+            backdrop-filter: blur(10px);
+        }
+        .url-box {
+            background: #0f172a;
+            color: #22d3ee;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+            direction: ltr;
+            text-align: left;
+            border: 1px solid #1e40af;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .feature::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            font-size: 1.5em;
+            margin-left: 15px;
+        }
+        h2 {
+            color: #93c5fd;
+            margin: 30px 0 15px 0;
+            font-size: 1.5em;
+        }
+        .dns-list {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid #334155;
+        }
+        .dns-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 5px;
+            font-size: 0.9em;
+            border: 1px solid #1e293b;
+        }
+        .warning {
+            background: rgba(180, 83, 9, 0.2);
+            border-right: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f59e0b;
+        }
+        .usage-section {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #334155;
+        }
+        .usage-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 8px;
+            border-right: 3px solid #60a5fa;
+        }
+        .usage-item strong {
+            color: #60a5fa;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        .code-box {
+            background: #0a0e1a;
+            color: #a5f3fc;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            margin: 15px 0;
+            border: 1px solid #1e293b;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .copy-btn, .download-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            margin-left: 10px;
+            font-size: 0.95em;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        .download-btn {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        .copy-btn:hover, .download-btn:hover {
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+        .download-btn:hover {
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+        }
+        .copy-btn:active, .download-btn:active {
+            transform: translateY(0);
+        }
+        .copy-btn.copied {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 0.95em;
+        }
+        .footer a {
+            color: #60a5fa;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .footer a:hover {
+            color: #93c5fd;
+            text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+        }
     </style>
-    <title>{{title}}</title>
-  </head>
-  <body>
-    {{body}}
-  </body>
-  </html>
-  `;
-  
-  const setPasswordHtml = modernUIBase.replace('{{title}}', 'Set Password').replace('{{body}}', `...`); // For brevity
-  const loginHtml = modernUIBase.replace('{{title}}', 'Login').replace('{{body}}', `...`); // For brevity
-  const changePasswordHtml = modernUIBase.replace('{{title}}', 'Change Password').replace('{{body}}', `...`); // For brevity
-  
-  const html = modernUIBase
-    .replace('{{title}}', 'Azadi DNS Panel')
-    .replace('{{body}}', `
-    <div class="card">
-      <h1>Azadi DNS Panel</h1>
-      <form id="dohForm">
-        <div class="form-group">
-            <label for="doh_server_select">Upstream DNS Server</label>
-            <select id="doh_server_select" name="doh_server_select">
-              {{doh_options}}
-              <option value="custom" {{custom_selected}}>Other (Custom)</option>
-            </select>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 DoH Proxy (نسخه پیشرفته)</h1>
+        <div class="status-container">
+            <div class="status">
+                <span>✓ فعال و آماده به کار</span>
+            </div>
         </div>
-        <div id="dns-description">Select a DNS to see its description here.</div>
-        <div class="form-group" id="custom_doh_container" style="{{custom_input_style}}">
-          <label for="dohaddress">Custom DoH Address</label>
-          <input type="text" id="dohaddress" name="dohaddress" value="{{dohaddress}}" placeholder="https://your-dns.com/query">
+        
+        <div class="info-box">
+            <strong>این یک سرویس DNS over HTTPS (DoH) هوشمند است که با امنیت و پایداری بالا کار می‌کند.</strong>
         </div>
-        <div class="button-group">
-          <button type="submit">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-              Save
-          </button>
-          <button type="button" id="resetButton" class="button-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l16 16" /></svg>
-              Reset
-          </button>
+
+        <h2>📍 آدرس سرویس شما:</h2>
+        <div class="url-box" id="dohUrl">${fullDohUrl}</div>
+        <button class="copy-btn" onclick="copyToClipboard('dohUrl')">📋 کپی آدرس</button>
+
+        <h2>✨ ویژگی‌های این DoH Proxy:</h2>
+        <div class="feature">استفاده از چندین سرور DNS معتبر با توزیع بار وزنی و Failover خودکار</div>
+        <div class="feature">شامل سرورهای مسدودکننده تبلیغات و ردیاب‌ها</div>
+        <div class="feature">رمزنگاری کامل تمام درخواست‌های DNS</div>
+        <div class="feature">محدودیت نرخ درخواست برای جلوگیری از سوء استفاده</div>
+        <div class="feature">Cache هوشمند برای سرعت بیشتر</div>
+        <div class="feature">Timeout مدیریت شده برای پایداری بالا</div>
+        <div class="feature">پشتیبانی از GET و POST method</div>
+
+        <h2>🌐 سرورهای DNS استفاده شده (با توزیع بار هوشمند):</h2>
+        ${dnsListHtml}
+
+        <div class="warning">
+            <strong>⚠️ توجه:</strong> این سرویس فقط DNS queries را رمزنگاری و برخی تبلیغات را مسدود می‌کند و جایگزین VPN نیست. برای دسترسی کامل به سایت‌های فیلتر شده، از VPN استفاده کنید.
         </div>
-      </form>
-      <div class="form-group" style="margin-top: 2rem;">
-          <label for="azadidoh">Your Personal DoH Address</label>
-          <div class="input-group">
-              <input type="text" id="azadidoh" name="azadidoh" value="{{origin}}/dns-query" readonly>
-              <button id="copyazadidoh">Copy</button>
-          </div>
-          <p class="info-text">این آدرس را در برنامه‌هایی مانند Intra یا Nebulo به عنوان سرور DNS سفارشی وارد کنید.</p>
-      </div>
-      <div class="panel-container button-group">
-        <button id="changePasswordButton" class="button-secondary">Change Password</button>
-        <button id="logoutButton" class="button-secondary">Logout</button>
-      </div>
-      <div class="version">Version 0.5.0</div>
-    </div>
-    <script>
-      const dohSelect = document.getElementById('doh_server_select');
-      const customDohContainer = document.getElementById('custom_doh_container');
-      const customDohInput = document.getElementById('dohaddress');
-      const descriptionDiv = document.getElementById('dns-description');
-      
-      function updateDescription() {
-        const selectedOption = dohSelect.options[dohSelect.selectedIndex];
-        const description = selectedOption.getAttribute('data-description');
-        if (dohSelect.value === 'custom') {
-          customDohContainer.style.display = 'block';
-          descriptionDiv.textContent = 'Please enter a valid DNS-over-HTTPS URL.';
-        } else {
-          customDohContainer.style.display = 'none';
-          customDohInput.value = dohSelect.value;
-          descriptionDiv.textContent = description || 'No description available.';
-        }
+
+        <h2>📱 نحوه استفاده:</h2>
+        <div class="usage-section">
+            <div class="usage-item">
+                <strong>🌐 مرورگرها (Firefox, Chrome, Edge, Brave):</strong>
+                بروید به تنظیمات مرورگر → بخش Privacy یا Security → DNS over HTTPS → انتخاب Custom Provider و آدرس بالا را وارد کنید.
+            </div>
+
+            <div class="usage-item">
+                <strong>📱 اپلیکیشن Intra (اندروید):</strong>
+                1. اپلیکیشن Intra را از Google Play نصب کنید<br>
+                2. اپلیکیشن را باز کنید<br>
+                3. روی گزینه "Configure custom server URL" بزنید<br>
+                4. آدرس زیر را در قسمت Custom DNS over HTTPS server URL وارد کنید:<br>
+                <div class="url-box" style="margin-top: 10px; font-size: 0.85em;">${fullDohUrl}</div>
+                5. دکمه ON را فعال کنید و از اینترنت امن‌تر لذت ببرید!
+            </div>
+
+            <div class="usage-item">
+                <strong>🍎 iOS, iPadOS و macOS:</strong>
+                برای استفاده در دستگاه‌های اپل، کافی است پروفایل شخصی خود را دانلود و نصب کنید:<br><br>
+                <a href="${appleProfileUrl}" class="download-btn">🍎 دانلود پروفایل iOS/macOS</a>
+                <br><br>
+                <strong>نحوه نصب:</strong><br>
+                • <strong>iOS/iPadOS:</strong> فایل را با Safari دانلود کنید → Settings → General → VPN, DNS & Device Management → Downloaded Profile → Install<br>
+                • <strong>macOS:</strong> فایل را دانلود کنید → System Settings → Privacy & Security → Profiles → نصب پروفایل
+            </div>
+
+            <div class="usage-item">
+                <strong>🔧 کلاینت‌های Xray (v2rayNG و مشابه):</strong>
+                برای استفاده در کلاینت‌های مبتنی بر Xray، می‌توانید از کانفیگ زیر استفاده کنید:<br><br>
+                <div class="code-box" id="xrayConfig">{
+  "remarks": "🛡️ Anonymous DoH Proxy",
+  "dns": {
+    "servers": [{"address": "${fullDohUrl}"}],
+    "queryStrategy": "UseIP"
+  },
+  "inbounds": [
+    {
+      "port": 10808,
+      "listen": "127.0.0.1",
+      "protocol": "socks",
+      "settings": {"auth": "noauth", "udp": true},
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       }
-  
-      dohSelect.addEventListener('change', updateDescription);
-      document.addEventListener('DOMContentLoaded', updateDescription);
-  
-      document.getElementById('dohForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const dohaddress = (dohSelect.value === 'custom') ? customDohInput.value : dohSelect.value;
-        const response = await fetch('/set-doh-address', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dohaddress }),
-        });
-        if (response.ok) {
-          Swal.fire({ icon: 'success', title: 'Settings Saved!', timer: 1500, showConfirmButton: false });
-        } else {
-          Swal.fire({ icon: 'error', title: 'Error', text: await response.text() });
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {"domainStrategy": "UseIP"},
+      "tag": "direct"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {"type": "field", "outboundTag": "direct", "network": "udp,tcp"}
+    ]
+  }
+}</div>
+                <button class="copy-btn" onclick="copyToClipboard('xrayConfig')">📋 کپی کانفیگ Xray</button>
+                <br><br>
+                <strong>نکته:</strong> این کانفیگ فقط DNS را امن می‌کند. برای دسترسی کامل به سایت‌های فیلتر شده نیاز به VPN دارید.
+            </div>
+
+            <div class="usage-item">
+                <strong>💻 ویندوز 11:</strong>
+                Settings → Network & Internet → Properties → DNS server assignment → Edit → Preferred DNS encryption: Encrypted only (DNS over HTTPS) و آدرس بالا را وارد کنید.
+            </div>
+
+            <div class="usage-item">
+                <strong>🔧 روتر:</strong>
+                بسته به مدل روتر، ممکن است پشتیبانی از DoH داشته باشد. به تنظیمات DNS روتر خود مراجعه کنید.
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Designed by: <a href="https://t.me/BXAMbot" target="_blank" rel="noopener noreferrer">Anonymous</a> | Upgraded Version</p>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            const btn = event.target;
+            const originalHTML = btn.innerHTML;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.classList.add('copied');
+                    btn.innerHTML = '✓ کپی شد!';
+                    setTimeout(() => {
+                        btn.classList.remove('copied');
+                        btn.innerHTML = originalHTML;
+                    }, 2000);
+                }).catch(() => {
+                    fallbackCopy(text, btn, originalHTML);
+                });
+            } else {
+                fallbackCopy(text, btn, originalHTML);
+            }
         }
-      });
-  
-      document.getElementById('copyazadidoh').addEventListener('click', () => {
-        navigator.clipboard.writeText(document.getElementById('azadidoh').value).then(() => {
-          Swal.fire({ icon: 'success', title: 'Copied!', timer: 1000, showConfirmButton: false });
-        });
-      });
-  
-      document.getElementById('resetButton').addEventListener('click', () => {
-          Swal.fire({ title: 'Are you sure?', text: "This will reset your upstream DNS to the default.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, reset it!' })
-          .then(async (result) => {
-              if (result.isConfirmed) {
-                  const response = await fetch('/reset-doh-address', { method: 'POST' });
-                  if (response.ok) {
-                      Swal.fire({ icon: 'success', title: 'Reset!', timer: 1500, showConfirmButton: false }).then(() => location.reload());
-                  } else {
-                      Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to reset.' });
-                  }
-              }
-          });
-      });
-  
-      document.getElementById('changePasswordButton').addEventListener('click', () => window.location.href = '/change-password');
-      document.getElementById('logoutButton').addEventListener('click', async () => {
-        await fetch('/logout', { method: 'POST' });
-        Swal.fire({ icon: 'info', title: 'Logged out', timer: 1500, showConfirmButton: false }).then(() => window.location.href = '/login');
-      });
+        
+        function fallbackCopy(text, btn, originalHTML) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                btn.classList.add('copied');
+                btn.innerHTML = '✓ کپی شد!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            } catch (err) {
+                btn.innerHTML = '❌ خطا در کپی';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }
+            document.body.removeChild(textArea);
+        }
     </script>
-  `);
-  
-  const errorHtml = modernUIBase.replace('{{title}}', 'Error').replace('{{body}}', `<div class="card"><h1>Error</h1><p>KV namespace is not configured.</p></div>`);
-  const notFoundHtml = modernUIBase.replace('{{title}}', 'Not Found').replace('{{body}}', `<div class="card"><h1>404 - Not Found</h1></div>`);
+</body>
+</html>`;
 }
