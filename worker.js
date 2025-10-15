@@ -1,16 +1,3 @@
-/**
- * DoH Proxy Worker - نسخه ارتقاء یافته و کامل
- * 
- * این نسخه با الهام از معماری‌های پیشرفته، ویژگی‌های زیر را به کد اصلی اضافه می‌کند:
- * 1.  **توزیع بار وزنی (Weighted Load Balancing):** درخواست‌ها به صورت هوشمند بین سرورهای DNS توزیع می‌شوند تا فشار بر یک سرور واحد کاهش یافته و پایداری کل سرویس افزایش یابد.
- * 2.  **لیست DNS متنوع و طبقه‌بندی شده:** علاوه بر سرورهای عمومی، سرورهای مخصوص مسدودسازی تبلیغات نیز اضافه شده‌اند تا ارزش افزوده‌ای برای کاربر ایجاد کنند.
- * 3.  **مکانیزم Failover ترکیبی:** ابتدا سرور منتخب بر اساس وزن امتحان می‌شود و در صورت شکست، به طور خودکار سایر سرورها را به عنوان پشتیبان امتحان می‌کند.
- * 4.  **تجربه کاربری بهبود یافته:** صفحه اصلی اکنون سرورهای DNS را به صورت طبقه‌بندی شده و با توضیحات کامل نمایش می‌دهد تا کاربر درک بهتری از عملکرد سرویس داشته باشد.
- * 5.  **امنیت تقویت‌شده:** هدر Content-Security-Policy (CSP) برای محافظت بیشتر از صفحه اصلی در برابر حملات XSS اضافه شده است.
- * 
- * تمام ویژگی‌های اصلی قبلی شامل ساخت پروفایل اپل، محدودیت نرخ درخواست، مدیریت وقفه (Timeout) و تمام بخش‌های راهنمای کاربر به طور کامل حفظ شده‌اند.
- */
-
 //================================================================================
 // پیکربندی اصلی
 //================================================================================
@@ -700,34 +687,251 @@ function getHomePage(requestUrl) {
                 <strong>🔧 کلاینت‌های Xray (v2rayNG و مشابه):</strong>
                 برای استفاده در کلاینت‌های مبتنی بر Xray، می‌توانید از کانفیگ زیر استفاده کنید:<br><br>
                 <div class="code-box" id="xrayConfig">{
-  "remarks": "🛡️ Anonymous DoH Proxy",
+  "remarks": "-SinaHamidi (Privacy-Centric)  [dns1]",
+  "log": {
+    "loglevel": "warning",
+    "dnsLog": false,
+    "access": "none"
+  },
+  "policy": {
+    "levels": {
+      "0": {
+        "uplinkOnly": 0,
+        "downlinkOnly": 0
+      }
+    }
+  },
   "dns": {
-    "servers": [{"address": "${fullDohUrl}"}],
-    "queryStrategy": "UseIP"
+    "hosts": {
+      "geosite:category-ads-all": "#3",
+      "cloudflare-dns.com": "www.cloudflare.com",
+      "dns.google": "www.google.com"
+    },
+    "servers": [
+      {
+        "address": "fakedns",
+        "domains": [
+          "domain:ir",
+          "geosite:private",
+          "geosite:ir",
+          "domain:dynx.pro",
+          "geosite:sanctioned",
+          "geosite:telegram",
+          "geosite:meta",
+          "geosite:youtube",
+          "geosite:twitter",
+          "geosite:reddit",
+          "geosite:twitch",
+          "geosite:tiktok",
+          "geosite:discord"
+        ],
+        "finalQuery": true
+      },
+      {
+        "tag": "personal-doh",
+        "address": "${fullDohUrl}",
+        "domains": [
+          "geosite:telegram",
+          "geosite:meta",
+          "geosite:youtube",
+          "geosite:twitter",
+          "geosite:reddit",
+          "geosite:twitch",
+          "geosite:tiktok",
+          "geosite:discord",
+          "geosite:sanctioned"
+        ],
+        "timeoutMs": 4000,
+        "finalQuery": true
+      },
+      {
+        "address": "localhost",
+        "domains": [
+          "domain:ir",
+          "geosite:private",
+          "geosite:ir"
+        ],
+        "finalQuery": true
+      }
+    ],
+    "queryStrategy": "UseSystem",
+    "useSystemHosts": true
   },
   "inbounds": [
     {
-      "port": 10808,
+      "tag": "dns-in",
       "listen": "127.0.0.1",
-      "protocol": "socks",
-      "settings": {"auth": "noauth", "udp": true},
+      "port": 10853,
+      "protocol": "tunnel",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 53,
+        "network": "tcp,udp"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveInterval": 1,
+          "tcpKeepAliveIdle": 46
+        }
+      }
+    },
+    {
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "protocol": "mixed",
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "fakedns"
+        ],
+        "routeOnly": false
+      },
+      "settings": {
+        "udp": true,
+        "ip": "127.0.0.1"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveInterval": 1,
+          "tcpKeepAliveIdle": 46
+        }
       }
     }
   ],
   "outbounds": [
     {
+      "tag": "block-out",
+      "protocol": "block"
+    },
+    {
+      "tag": "direct-out",
+      "protocol": "direct"
+    },
+    {
+      "tag": "dns-out",
+      "protocol": "dns",
+      "settings": {
+        "nonIPQuery": "reject",
+        "blockTypes": [
+          0,
+          65
+        ]
+      }
+    },
+    {
+      "tag": "smart-fragment-out",
       "protocol": "freedom",
-      "settings": {"domainStrategy": "UseIP"},
-      "tag": "direct"
+      "streamSettings": {
+        "sockopt": {},
+        "tlsSettings": {
+          "fingerprint": "chrome"
+        }
+      },
+      "settings": {
+        "fragment": {
+          "packets": "tlshello",
+          "length": "10-100",
+          "interval": "1-5"
+        },
+        "domainStrategy": "UseIPv4v6"
+      }
+    },
+    {
+      "tag": "udp-noises-out",
+      "protocol": "direct",
+      "settings": {
+        "targetStrategy": "ForceIP",
+        "noises": [
+            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
+            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
+            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
+            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
+            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
+            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
+            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
+            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}
+        ]
+      }
     }
   ],
   "routing": {
-    "domainStrategy": "AsIs",
+    "domainStrategy": "IPOnDemand",
     "rules": [
-      {"type": "field", "outboundTag": "direct", "network": "udp,tcp"}
+      {
+        "outboundTag": "block-out",
+        "domain": [
+          "geosite:category-ads-all"
+        ]
+      },
+      {
+        "outboundTag": "block-out",
+        "ip": [
+          "geoip:irgfw-block-injected-ips",
+          "0.0.0.0",
+          "::",
+          "198.18.0.0/15",
+          "fc00::/18"
+        ]
+      },
+      {
+        "outboundTag": "dns-out",
+        "inboundTag": [
+          "dns-in"
+        ]
+      },
+      {
+        "outboundTag": "dns-out",
+        "inboundTag": [
+          "socks-in"
+        ],
+        "port": 53
+      },
+      {
+        "outboundTag": "smart-fragment-out",
+        "inboundTag": [
+          "personal-doh"
+        ]
+      },
+      {
+        "outboundTag": "direct-out",
+        "domain": [
+          "domain:ir",
+          "geosite:private",
+          "geosite:ir"
+        ]
+      },
+      {
+        "outboundTag": "direct-out",
+        "ip": [
+          "geoip:private",
+          "geoip:ir"
+        ]
+      },
+      {
+        "outboundTag": "udp-noises-out",
+        "network": "udp",
+        "protocol": [
+          "quic"
+        ]
+      },
+      {
+        "outboundTag": "udp-noises-out",
+        "network": "udp",
+        "port": "443,2053,2083,2087,2096,8443"
+      },
+      {
+        "outboundTag": "direct-out",
+        "network": "udp"
+      },
+      {
+        "outboundTag": "smart-fragment-out",
+        "network": "tcp"
+      },
+      {
+        "outboundTag": "block-out",
+        "network": "tcp,udp"
+      }
     ]
   }
 }</div>
