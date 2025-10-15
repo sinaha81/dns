@@ -9,10 +9,10 @@ const UPSTREAM_DNS_PROVIDERS = [
   { name: "Google", url: "https://dns.google/dns-query", weight: 20, category: "عمومی و سریع", description: "پایداری و سرعت بالا در سراسر جهان." },
   { name: "Quad9", url: "https://dns.quad9.net/dns-query", weight: 20, category: "عمومی و سریع", description: "مسدودسازی دامنه‌های مخرب، فیشینگ و بدافزارها برای افزایش امنیت." },
   { name: "OpenDNS", url: "https://doh.opendns.com/dns-query", weight: 10, category: "عمومی و سریع", description: "یکی از قدیمی‌ترین و پایدارترین سرویس‌های DNS عمومی." },
+  { name: "DNS4EU", url: "https://dns.dns4.eu/dns-query", weight: 15, category: "عمومی و سریع", description: "سرویس DNS عمومی اروپایی با تمرکز بر حریم خصوصی و امنیت." },
 
   // دسته: مسدودکننده تبلیغات و ردیاب‌ها
-  { name: "AdGuard", url: "https://dns.adguard-dns.com/dns-query", weight: 15, category: "مسدودکننده تبلیغات", description: "مسدودسازی موثر تبلیغات، ردیاب‌ها و سایت‌های مخرب." },
-  { name: "Mullvad", url: "https://adblock.dns.mullvad.net/dns-query", weight: 10, category: "مسدودکننده تبلیغات", description: "ارائه شده توسط سرویس VPN معتبر Mullvad برای مسدودسازی تبلیغات و ردیاب‌ها." }
+  { name: "AdGuard", url: "https://dns.adguard-dns.com/dns-query", weight: 15, category: "مسدودکننده تبلیغات", description: "مسدودسازی موثر تبلیغات، ردیاب‌ها و سایت‌های مخرب." }
 ];
 
 const DNS_CACHE_TTL = 300;
@@ -358,23 +358,12 @@ function getHomePage(requestUrl) {
   const fullDohUrl = new URL('/dns-query', requestUrl).href;
   const appleProfileUrl = new URL('/apple', requestUrl).href;
   
-  // [ایده ۲] - تولید HTML داینامیک برای نمایش دسته‌بندی شده سرورهای DNS
-  const dnsCategories = {};
+  // تولید HTML برای نمایش لیست یکپارچه سرورهای DNS
+  let dnsListHtml = '<h3>لیست doh</h3><div class="dns-list">';
   UPSTREAM_DNS_PROVIDERS.forEach(provider => {
-    if (!dnsCategories[provider.category]) {
-      dnsCategories[provider.category] = [];
-    }
-    dnsCategories[provider.category].push(provider);
+    dnsListHtml += `<div class="dns-item"><b>${provider.name}:</b> ${provider.description}</div>`;
   });
-  
-  let dnsListHtml = '';
-  for (const category in dnsCategories) {
-    dnsListHtml += `<h3>${category}</h3><div class="dns-list">`;
-    dnsCategories[category].forEach(provider => {
-      dnsListHtml += `<div class="dns-item"><b>${provider.name}:</b> ${provider.description}</div>`;
-    });
-    dnsListHtml += `</div>`;
-  }
+  dnsListHtml += `</div>`;
   
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
