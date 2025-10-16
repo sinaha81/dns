@@ -1,17 +1,11 @@
-//================================================================================
-// پیکربندی اصلی
-//================================================================================
 
-// [ایده ۱] - لیست سرورهای DNS با ساختار جدید شامل نام، وزن، دسته‌بندی و توضیحات
 const UPSTREAM_DNS_PROVIDERS = [
-  // دسته: عمومی و سریع
+
   { name: "Cloudflare", url: "https://cloudflare-dns.com/dns-query", weight: 25, category: "عمومی و سریع", description: "تمرکز بر سرعت و حریم خصوصی، بدون ذخیره لاگ." },
   { name: "Google", url: "https://dns.google/dns-query", weight: 20, category: "عمومی و سریع", description: "پایداری و سرعت بالا در سراسر جهان." },
   { name: "Quad9", url: "https://dns.quad9.net/dns-query", weight: 20, category: "عمومی و سریع", description: "مسدودسازی دامنه‌های مخرب، فیشینگ و بدافزارها برای افزایش امنیت." },
   { name: "OpenDNS", url: "https://doh.opendns.com/dns-query", weight: 10, category: "عمومی و سریع", description: "یکی از قدیمی‌ترین و پایدارترین سرویس‌های DNS عمومی." },
   { name: "DNS4EU", url: "https://dns.dns4.eu/dns-query", weight: 15, category: "عمومی و سریع", description: "سرویس DNS عمومی اروپایی با تمرکز بر حریم خصوصی و امنیت." },
-
-  // دسته: مسدودکننده تبلیغات و ردیاب‌ها
   { name: "AdGuard", url: "https://dns.adguard-dns.com/dns-query", weight: 15, category: "مسدودکننده تبلیغات", description: "مسدودسازی موثر تبلیغات، ردیاب‌ها و سایت‌های مخرب." }
 ];
 
@@ -19,20 +13,11 @@ const DNS_CACHE_TTL = 300;
 const REQUEST_TIMEOUT = 10000;
 const RATE_LIMIT_REQUESTS = 100;
 const RATE_LIMIT_WINDOW = 60000;
-
 const rateLimitMap = new Map();
-
-//================================================================================
-// شنونده رویداد اصلی
-//================================================================================
-
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
 
-//================================================================================
-// کنترل‌گر اصلی درخواست‌ها
-//================================================================================
 
 async function handleRequest(request) {
   const url = new URL(request.url);
@@ -54,8 +39,7 @@ async function handleRequest(request) {
   }
   
   if (url.pathname !== '/dns-query') {
-    // [ایده ۲ و بهبود امنیتی] - افزودن هدر CSP به صفحه اصلی
-    const csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';";
+    const csp = "default-src 'self' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;";
     return new Response(getHomePage(request.url), {
       status: 200,
       headers: {
@@ -64,7 +48,7 @@ async function handleRequest(request) {
         'X-Frame-Options': 'DENY',
         'X-XSS-Protection': '1; mode=block',
         'Referrer-Policy': 'no-referrer',
-        'Content-Security-Policy': csp // هدر امنیتی جدید اضافه شد
+        'Content-Security-Policy': csp
       }
     });
   }
@@ -112,11 +96,8 @@ async function handleRequest(request) {
   }
 }
 
-//================================================================================
-// منطق توزیع بار و ارسال درخواست‌ها
-//================================================================================
 
-// [ایده ۱] - تابع انتخاب سرور بر اساس وزن تعریف شده
+
 function selectProvider(providers) {
   const totalWeight = providers.reduce((sum, provider) => sum + provider.weight, 0);
   let random = Math.random() * totalWeight;
@@ -128,7 +109,6 @@ function selectProvider(providers) {
     random -= provider.weight;
   }
   
-  // به عنوان fallback در صورت خطای محاسباتی، اولین سرور را برمی‌گرداند
   return providers[0];
 }
 
@@ -143,7 +123,6 @@ async function handleGetRequest(url) {
     throw new Error('Invalid dns parameter format');
   }
   
-  // [ایده ۱] - پیاده‌سازی منطق ترکیبی توزیع بار و Failover
   const selectedProvider = selectProvider(UPSTREAM_DNS_PROVIDERS);
   const fallbackProviders = UPSTREAM_DNS_PROVIDERS.filter(p => p.url !== selectedProvider.url);
   const providersToTry = [selectedProvider, ...fallbackProviders];
@@ -174,7 +153,7 @@ async function handleGetRequest(url) {
       clearTimeout(timeoutId);
       
       if (response.ok) {
-        return response; // موفقیت‌آمیز بود، پاسخ را برگردان
+        return response;
       }
       
     } catch (error) {
@@ -199,7 +178,6 @@ async function handlePostRequest(request) {
     throw new Error('Invalid DNS message size');
   }
 
-  // [ایده ۱] - پیاده‌سازی منطق ترکیبی توزیع بار و Failover
   const selectedProvider = selectProvider(UPSTREAM_DNS_PROVIDERS);
   const fallbackProviders = UPSTREAM_DNS_PROVIDERS.filter(p => p.url !== selectedProvider.url);
   const providersToTry = [selectedProvider, ...fallbackProviders];
@@ -223,7 +201,7 @@ async function handlePostRequest(request) {
       clearTimeout(timeoutId);
       
       if (response.ok) {
-        return response; // موفقیت‌آمیز بود، پاسخ را برگردان
+        return response;
       }
       
     } catch (error) {
@@ -235,9 +213,7 @@ async function handlePostRequest(request) {
   throw new Error('All upstream DNS servers failed');
 }
 
-//================================================================================
-// توابع جانبی و کمکی
-//================================================================================
+
 
 function generateAppleProfile(requestUrl) {
   const baseUrl = new URL(requestUrl);
@@ -322,18 +298,12 @@ function checkRateLimit(clientIP) {
   const clientData = rateLimitMap.get(clientIP);
   
   if (!clientData) {
-    rateLimitMap.set(clientIP, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW
-    });
+    rateLimitMap.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return true;
   }
   
   if (now > clientData.resetTime) {
-    rateLimitMap.set(clientIP, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW
-    });
+    rateLimitMap.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return true;
   }
   
@@ -350,896 +320,464 @@ function isValidBase64Url(str) {
   return base64UrlRegex.test(str);
 }
 
-//================================================================================
-// تولید کننده صفحه اصلی (UI)
-//================================================================================
 
 function getHomePage(requestUrl) {
   const fullDohUrl = new URL('/dns-query', requestUrl).href;
   const appleProfileUrl = new URL('/apple', requestUrl).href;
   
-  // تولید HTML برای نمایش لیست یکپارچه سرورهای DNS
-  let dnsListHtml = '<h3>لیست doh</h3><div class="dns-list">';
+  let dnsListHtml = '';
   UPSTREAM_DNS_PROVIDERS.forEach(provider => {
-    dnsListHtml += `<div class="dns-item"><b>${provider.name}:</b> ${provider.description}</div>`;
+    dnsListHtml += `<li class="dns-item">
+      <span class="dns-name">${provider.name}</span>
+      <span class="dns-desc">${provider.description}</span>
+    </li>`;
   });
-  dnsListHtml += `</div>`;
-  
+
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DoH Proxy - DNS over HTTPS</title>
+    <title>DoH Proxy - Aurora UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-color: #010409;
+            --container-bg: rgba(22, 27, 34, 0.75);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #e6edf3;
+            --text-secondary: #7d8590;
+            --accent-color: #38bdf8; /* Sky Blue */
+            --accent-hover: #7dd3fc; /* Lighter Sky Blue */
+            --info-color: #316dca;
+            --info-bg: rgba(56, 139, 253, 0.1);
+            --info-border: rgba(56, 139, 253, 0.3);
+            --warn-color: #f7b948;
+            --warn-bg: rgba(247, 185, 72, 0.1);
+            --warn-border: rgba(247, 185, 72, 0.3);
+        }
+        @keyframes aurora-bg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: 20px;
-            color: #e2e8f0;
+            align-items: flex-start;
+            padding: 3rem 1rem;
+            overflow-y: auto;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(125deg, #0d1117, #38bdf8, #0d1117, #58a6ff, #0d1117);
+            background-size: 400% 400%;
+            animation: aurora-bg 20s ease infinite;
+            filter: blur(80px);
+            opacity: 0.25;
+            z-index: -1;
         }
         .container {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            max-width: 900px;
+            max-width: 700px;
             width: 100%;
-            padding: 40px;
-            border: 1px solid #475569;
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: relative;
+            z-index: 1;
         }
-        h1 {
-            color: #60a5fa;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-            text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
-        }
-        h3 {
-            color: #93c5fd;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #475569;
-            padding-bottom: 5px;
-        }
-        .status-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 30px;
+        .header { text-align: center; margin-bottom: 2.5rem; }
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+            background: -webkit-linear-gradient(45deg, #c3d9ef, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
         }
         .status {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-weight: bold;
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
-            animation: pulse 2s infinite;
-            position: relative;
+            gap: 0.5rem;
+            background-color: rgba(35, 134, 54, 0.15);
+            color: #3fb950;
+            padding: 0.3rem 0.8rem;
+            border-radius: 99px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid rgba(35, 134, 54, 0.3);
         }
         .status::before {
             content: '';
-            width: 12px;
-            height: 12px;
-            background: #ffffff;
+            width: 8px;
+            height: 8px;
+            background-color: #3fb950;
             border-radius: 50%;
-            animation: blink 1.5s infinite;
-            box-shadow: 0 0 10px #ffffff;
+            box-shadow: 0 0 8px #3fb950;
+            animation: pulse 2s infinite;
         }
-        @keyframes pulse {
-            0%, 100% {
-                box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
-            }
-            50% {
-                box-shadow: 0 8px 35px rgba(16, 185, 129, 0.8);
-            }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        
+        .section { margin-bottom: 2.5rem; }
+        .section:last-child { margin-bottom: 0; }
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
         }
-        @keyframes blink {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.3;
-            }
-        }
-        .info-box {
-            background: rgba(30, 41, 59, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-right: 4px solid #60a5fa;
-            backdrop-filter: blur(10px);
-        }
+        
         .url-box {
-            background: #0f172a;
-            color: #22d3ee;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            word-break: break-all;
-            margin: 10px 0;
-            direction: ltr;
-            text-align: left;
-            border: 1px solid #1e40af;
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
-        }
-        .feature {
             display: flex;
             align-items: center;
-            margin: 15px 0;
-            padding: 10px;
-            background: rgba(30, 41, 59, 0.6);
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            border: 1px solid #334155;
+            padding: 0.5rem;
+            direction: ltr;
         }
-        .feature::before {
-            content: "✓";
-            color: #10b981;
-            font-weight: bold;
-            font-size: 1.5em;
-            margin-left: 15px;
+        .url-text {
+            flex-grow: 1;
+            padding: 0.5rem;
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: var(--accent-color);
+            overflow-x: auto;
+            white-space: nowrap;
         }
-        h2 {
-            color: #93c5fd;
-            margin: 30px 0 15px 0;
-            font-size: 1.5em;
+        .copy-btn {
+            background-color: #21262d;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
         }
-        .dns-list {
-            background: rgba(30, 41, 59, 0.6);
-            padding: 10px 20px;
-            border-radius: 10px;
-            margin: 15px 0;
-            border: 1px solid #334155;
-        }
+        .copy-btn:hover { background-color: #30363d; color: var(--text-primary); transform: scale(1.05); }
+        .copy-btn:active { transform: scale(0.98); }
+
+        .dns-list { list-style: none; }
         .dns-item {
-            padding: 8px;
-            margin: 5px 0;
-            background: rgba(15, 23, 42, 0.8);
-            border-radius: 5px;
-            font-size: 0.9em;
-            border: 1px solid #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0.25rem;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 1rem;
+            transition: background-color 0.2s;
         }
-        .warning {
-            background: rgba(180, 83, 9, 0.2);
-            border-right: 4px solid #f59e0b;
-            padding: 15px;
+        .dns-item:hover { background-color: rgba(255,255,255,0.03); }
+        .dns-item:last-child { border-bottom: none; }
+        .dns-name { font-weight: 500; color: var(--text-primary); }
+        .dns-desc { font-size: 0.9rem; color: var(--text-secondary); text-align: left; }
+        
+        .info-box, .warning-box {
+            padding: 1rem;
             border-radius: 8px;
-            margin: 20px 0;
-            border: 1px solid #f59e0b;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
         }
-        .usage-section {
-            background: rgba(30, 41, 59, 0.6);
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border: 1px solid #334155;
+        .info-box {
+            background-color: var(--info-bg);
+            border: 1px solid var(--info-border);
+            border-right: 3px solid var(--accent-color);
         }
-        .usage-item {
-            margin: 15px 0;
-            padding: 15px;
-            background: rgba(15, 23, 42, 0.8);
-            border-radius: 8px;
-            border-right: 3px solid #60a5fa;
+        .warning-box {
+            background-color: var(--warn-bg);
+            border: 1px solid var(--warn-border);
+            border-right: 3px solid var(--warn-color);
         }
-        .usage-item strong {
-            color: #60a5fa;
-            display: block;
-            margin-bottom: 8px;
-            font-size: 1.1em;
+        .info-box ul {
+            padding-right: 1.25rem;
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.7;
         }
+        .warning-box p { margin: 0; color: var(--warn-color); font-weight: 500; line-height: 1.6; }
+
+        .tabs { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; }
+        .tab-btn {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-family: 'Vazirmatn', sans-serif;
+            position: relative;
+            transition: color 0.2s ease;
+        }
+        .tab-btn::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--accent-color);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        .tab-btn:hover { color: var(--text-primary); }
+        .tab-btn.active { color: var(--text-primary); }
+        .tab-btn.active::after { transform: scaleX(1); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-content p { color: var(--text-secondary); margin-bottom: 1rem; }
+
         .code-box {
-            background: #0a0e1a;
-            color: #a5f3fc;
-            padding: 15px;
+            position: relative;
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-family: monospace;
             font-size: 0.85em;
-            overflow-x: auto;
-            margin: 15px 0;
-            border: 1px solid #1e293b;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            max-height: 300px;
+            overflow: auto;
         }
-        .copy-btn, .download-btn {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 10px;
-            margin-left: 10px;
-            font-size: 0.95em;
-            transition: all 0.3s;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-        .download-btn {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-        }
-        .copy-btn:hover, .download-btn:hover {
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
-            transform: translateY(-2px);
-        }
-        .download-btn:hover {
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
-        }
-        .copy-btn:active, .download-btn:active {
-            transform: translateY(0);
-        }
-        .copy-btn.copied {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-        }
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #334155;
-            color: #94a3b8;
-            font-size: 0.95em;
-        }
-        .footer a {
-            color: #60a5fa;
-            text-decoration: none;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-        .footer a:hover {
-            color: #93c5fd;
-            text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
-        }
-        @media (max-width: 600px) {
-            .container {
-                padding: 20px;
+        .code-box pre { padding: 1rem; padding-top: 3rem; white-space: pre-wrap; word-wrap: break-word; color: #b3b3b3; }
+        .code-box .copy-btn { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 10; }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 1.5rem 0.5rem;
             }
-            h1 {
-                font-size: 1.8em;
+            .container {
+                padding: 1.5rem 1rem;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
+            .section-title {
+                font-size: 1.15rem;
+            }
+            .dns-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+            .dns-desc {
+                text-align: right;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔒 DoH Proxy (نسخه پیشرفته)</h1>
-        <div class="status-container">
-            <div class="status">
-                <span>✓ فعال و آماده به کار</span>
+        <header class="header">
+            <h1>DoH Proxy</h1>
+            <div class="status">سرویس فعال است</div>
+        </header>
+
+        <section class="section">
+            <h2 class="section-title">آدرس سرویس شما</h2>
+            <div class="url-box">
+                <span class="url-text" id="dohUrl">${fullDohUrl}</span>
+                <button class="copy-btn" onclick="copyToClipboard('dohUrl', 'آدرس سرویس')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <span>کپی</span>
+                </button>
             </div>
-        </div>
-        
-        <div class="info-box">
-            <strong>این یک سرویس DNS over HTTPS (DoH) هوشمند است که با امنیت و پایداری بالا کار می‌کند.</strong>
-        </div>
+        </section>
 
-        <h2>📍 آدرس سرویس شما:</h2>
-        <div class="url-box" id="dohUrl">${fullDohUrl}</div>
-        <button class="copy-btn" onclick="copyToClipboard('dohUrl')">📋 کپی آدرس</button>
-
-        <h2>✨ ویژگی‌های این DoH Proxy:</h2>
-        <div class="feature">استفاده از چندین سرور DNS معتبر با توزیع بار وزنی و Failover خودکار</div>
-        <div class="feature">شامل سرورهای مسدودکننده تبلیغات و ردیاب‌ها</div>
-        <div class="feature">رمزنگاری کامل تمام درخواست‌های DNS</div>
-        <div class="feature">محدودیت نرخ درخواست برای جلوگیری از سوء استفاده</div>
-        <div class="feature">Cache هوشمند برای سرعت بیشتر</div>
-        <div class="feature">Timeout مدیریت شده برای پایداری بالا</div>
-        <div class="feature">پشتیبانی از GET و POST method</div>
-
-        <h2>🌐 سرورهای DNS استفاده شده (با توزیع بار هوشمند):</h2>
-        ${dnsListHtml}
-
-        <div class="warning">
-            <strong>⚠️ توجه:</strong> این سرویس فقط DNS queries را رمزنگاری و برخی تبلیغات را مسدود می‌کند و جایگزین VPN نیست. برای دسترسی کامل به سایت‌های فیلتر شده، از VPN استفاده کنید.
-        </div>
-
-        <h2>📱 نحوه استفاده:</h2>
-        <div class="usage-section">
-            <div class="usage-item">
-                <strong>🌐 مرورگرها (Firefox, Chrome, Edge, Brave):</strong>
-                بروید به تنظیمات مرورگر → بخش Privacy یا Security → DNS over HTTPS → انتخاب Custom Provider و آدرس بالا را وارد کنید.
+        <section class="section">
+            <h2 class="section-title">کلاینت‌های Xray (v2rayNG و مشابه)</h2>
+            <div class="info-box">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="min-width: 24px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                <div>
+                    <strong>پیش‌نیازها:</strong>
+                    <ul>
+                        <li>نسخه v2rayNG باید بالاتر از 1.10.23 باشد.</li>
+                        <li>فایل‌های Geo (geoip.dat و geosite.dat) باید به آخرین نسخه ایران آپدیت شده باشند.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="openTab(event, 'noFragment')">بدون فرگمنت</button>
+                <button class="tab-btn" onclick="openTab(event, 'withFragment')">با فرگمنت</button>
             </div>
 
-            <div class="usage-item">
-                <strong>📱 اپلیکیشن Intra (اندروید):</strong>
-                1. اپلیکیشن Intra را از Google Play نصب کنید<br>
-                2. اپلیکیشن را باز کنید<br>
-                3. روی گزینه "Configure custom server URL" بزنید<br>
-                4. آدرس زیر را در قسمت Custom DNS over HTTPS server URL وارد کنید:<br>
-                <div class="url-box" style="margin-top: 10px; font-size: 0.85em;">${fullDohUrl}</div>
-                5. دکمه ON را فعال کنید و از اینترنت امن‌تر لذت ببرید!
-            </div>
-
-            <div class="usage-item">
-                <strong>🍎 iOS, iPadOS و macOS:</strong>
-                برای استفاده در دستگاه‌های اپل، کافی است پروفایل شخصی خود را دانلود و نصب کنید:<br><br>
-                <a href="${appleProfileUrl}" class="download-btn">🍎 دانلود پروفایل iOS/macOS</a>
-                <br><br>
-                <strong>نحوه نصب:</strong><br>
-                • <strong>iOS/iPadOS:</strong> فایل را با Safari دانلود کنید → Settings → General → VPN, DNS & Device Management → Downloaded Profile → Install<br>
-                • <strong>macOS:</strong> فایل را دانلود کنید → System Settings → Privacy & Security → Profiles → نصب پروفایل
-            </div>
-
-            <div class="usage-item">
-                <strong>🔧 کلاینت‌های Xray (v2rayNG و مشابه):</strong>
-                برای استفاده در کلاینت‌های مبتنی بر Xray، می‌توانید از کانفیگ‌های زیر استفاده کنید:<br><br>
-
-                <strong>1. کانفیگ بدون فرگمنت (پیشنهاد اولیه):</strong>
-                <div class="code-box" id="xrayConfigNoFragment">{
-  "remarks": "-SinaHamidi (Privacy-Centric)  [dns1]",
-  "log": {
-    "loglevel": "warning",
-    "dnsLog": false,
-    "access": "none"
-  },
-  "policy": {
-    "levels": {
-      "0": {
-        "uplinkOnly": 0,
-        "downlinkOnly": 0
-      }
-    }
-  },
+            <div id="noFragment" class="tab-content active">
+                <p>کانفیگ پیشنهادی برای اکثر شبکه‌ها.</p>
+                <div class="code-box">
+                    <button class="copy-btn" onclick="copyToClipboard('xrayConfigNoFragment', 'کانفیگ بدون فرگمنت')"><span>کپی</span></button>
+                    <pre id="xrayConfigNoFragment">{
+  "remarks": "normal",
+  "log": { "loglevel": "warning", "dnsLog": false, "access": "none" },
+  "policy": { "levels": { "0": { "uplinkOnly": 0, "downlinkOnly": 0 } } },
   "dns": {
-    "hosts": {
-      "geosite:category-ads-all": "#3",
-      "cloudflare-dns.com": "www.cloudflare.com",
-      "dns.google": "www.google.com"
-    },
+    "hosts": { "geosite:category-ads-all": "#3", "cloudflare-dns.com": "www.cloudflare.com", "dns.google": "www.google.com" },
     "servers": [
-      {
-        "address": "fakedns",
-        "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir",
-          "domain:dynx.pro",
-          "geosite:sanctioned",
-          "geosite:telegram",
-          "geosite:meta",
-          "geosite:youtube",
-          "geosite:twitter",
-          "geosite:reddit",
-          "geosite:twitch",
-          "geosite:tiktok",
-          "geosite:discord"
-        ],
-        "finalQuery": true
-      },
-      {
-        "tag": "personal-doh",
-        "address": "${fullDohUrl}",
-        "domains": [
-          "geosite:telegram",
-          "geosite:meta",
-          "geosite:youtube",
-          "geosite:twitter",
-          "geosite:reddit",
-          "geosite:twitch",
-          "geosite:tiktok",
-          "geosite:discord",
-          "geosite:sanctioned"
-        ],
-        "timeoutMs": 4000,
-        "finalQuery": true
-      },
-      {
-        "address": "localhost",
-        "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir"
-        ],
-        "finalQuery": true
-      }
-    ],
-    "queryStrategy": "UseSystem",
-    "useSystemHosts": true
+      { "address": "fakedns", "domains": ["domain:ir", "geosite:private", "geosite:ir", "domain:dynx.pro", "geosite:sanctioned", "geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord"], "finalQuery": true },
+      { "tag": "personal-doh", "address": "${fullDohUrl}", "domains": ["geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord", "geosite:sanctioned"], "timeoutMs": 4000, "finalQuery": true },
+      { "address": "localhost", "domains": ["domain:ir", "geosite:private", "geosite:ir"], "finalQuery": true }
+    ], "queryStrategy": "UseSystem", "useSystemHosts": true
   },
   "inbounds": [
-    {
-      "tag": "dns-in",
-      "listen": "127.0.0.1",
-      "port": 10853,
-      "protocol": "tunnel",
-      "settings": {
-        "address": "127.0.0.1",
-        "port": 53,
-        "network": "tcp,udp"
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpKeepAliveInterval": 1,
-          "tcpKeepAliveIdle": 46
-        }
-      }
-    },
-    {
-      "tag": "socks-in",
-      "listen": "127.0.0.1",
-      "port": 10808,
-      "protocol": "mixed",
-      "sniffing": {
-        "enabled": true,
-        "destOverride": [
-          "fakedns"
-        ],
-        "routeOnly": false
-      },
-      "settings": {
-        "udp": true,
-        "ip": "127.0.0.1"
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpKeepAliveInterval": 1,
-          "tcpKeepAliveIdle": 46
-        }
-      }
-    }
+    { "tag": "dns-in", "listen": "127.0.0.1", "port": 10853, "protocol": "tunnel", "settings": { "address": "127.0.0.1", "port": 53, "network": "tcp,udp" }, "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } } },
+    { "tag": "socks-in", "listen": "127.0.0.1", "port": 10808, "protocol": "mixed", "sniffing": { "enabled": true, "destOverride": ["fakedns"], "routeOnly": false }, "settings": { "udp": true, "ip": "127.0.0.1" }, "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } } }
   ],
   "outbounds": [
-    {
-      "tag": "block-out",
-      "protocol": "block"
-    },
-    {
-      "tag": "direct-out",
-      "protocol": "direct"
-    },
-    {
-      "tag": "dns-out",
-      "protocol": "dns",
-      "settings": {
-        "nonIPQuery": "reject",
-        "blockTypes": [
-          0,
-          65
-        ]
-      }
-    },
-    {
-      "tag": "smart-fragment-out",
-      "protocol": "freedom",
-      "streamSettings": {
-        "sockopt": {},
-        "tlsSettings": {
-          "fingerprint": "chrome"
-        }
-      },
-      "settings": {
-        "domainStrategy": "UseIPv4v6"
-      }
-    },
-    {
-      "tag": "udp-noises-out",
-      "protocol": "direct",
-      "settings": {
-        "targetStrategy": "ForceIP",
-        "noises": [
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}
-        ]
-      }
-    }
+    { "tag": "block-out", "protocol": "block" },
+    { "tag": "direct-out", "protocol": "direct" },
+    { "tag": "dns-out", "protocol": "dns", "settings": { "nonIPQuery": "reject", "blockTypes": [0, 65] } },
+    { "tag": "smart-fragment-out", "protocol": "freedom", "streamSettings": { "sockopt": {}, "tlsSettings": { "fingerprint": "chrome" } }, "settings": { "domainStrategy": "UseIPv4v6" } },
+    { "tag": "udp-noises-out", "protocol": "direct", "settings": { "targetStrategy": "ForceIP", "noises": [{"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}] } }
   ],
   "routing": {
     "domainStrategy": "IPOnDemand",
     "rules": [
-      {
-        "outboundTag": "block-out",
-        "domain": [
-          "geosite:category-ads-all"
-        ]
-      },
-      {
-        "outboundTag": "block-out",
-        "ip": [
-          "geoip:irgfw-block-injected-ips",
-          "0.0.0.0",
-          "::",
-          "198.18.0.0/15",
-          "fc00::/18"
-        ]
-      },
-      {
-        "outboundTag": "dns-out",
-        "inboundTag": [
-          "dns-in"
-        ]
-      },
-      {
-        "outboundTag": "dns-out",
-        "inboundTag": [
-          "socks-in"
-        ],
-        "port": 53
-      },
-      {
-        "outboundTag": "smart-fragment-out",
-        "inboundTag": [
-          "personal-doh"
-        ]
-      },
-      {
-        "outboundTag": "direct-out",
-        "domain": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir"
-        ]
-      },
-      {
-        "outboundTag": "direct-out",
-        "ip": [
-          "geoip:private",
-          "geoip:ir"
-        ]
-      },
-      {
-        "outboundTag": "udp-noises-out",
-        "network": "udp",
-        "protocol": [
-          "quic"
-        ]
-      },
-      {
-        "outboundTag": "udp-noises-out",
-        "network": "udp",
-        "port": "443,2053,2083,2087,2096,8443"
-      },
-      {
-        "outboundTag": "direct-out",
-        "network": "udp"
-      },
-      {
-        "outboundTag": "smart-fragment-out",
-        "network": "tcp"
-      },
-      {
-        "outboundTag": "block-out",
-        "network": "tcp,udp"
-      }
+      { "outboundTag": "block-out", "domain": ["geosite:category-ads-all"] },
+      { "outboundTag": "block-out", "ip": ["geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18"] },
+      { "outboundTag": "dns-out", "inboundTag": ["dns-in"] },
+      { "outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53 },
+      { "outboundTag": "smart-fragment-out", "inboundTag": ["personal-doh"] },
+      { "outboundTag": "direct-out", "domain": ["domain:ir", "geosite:private", "geosite:ir"] },
+      { "outboundTag": "direct-out", "ip": ["geoip:private", "geoip:ir"] },
+      { "outboundTag": "udp-noises-out", "network": "udp", "protocol": ["quic"] },
+      { "outboundTag": "udp-noises-out", "network": "udp", "port": "443,2053,2083,2087,2096,8443" },
+      { "outboundTag": "direct-out", "network": "udp" },
+      { "outboundTag": "smart-fragment-out", "network": "tcp" },
+      { "outboundTag": "block-out", "network": "tcp,udp" }
     ]
   }
-}</div>
-                <button class="copy-btn" onclick="copyToClipboard('xrayConfigNoFragment')">📋 کپی کانفیگ بدون فرگمنت</button>
-                <br><br>
+}</pre>
+                </div>
+            </div>
 
-                <strong>2. کانفیگ با فرگمنت (برای شرایط خاص شبکه):</strong>
-                <div class="code-box" id="xrayConfigWithFragment">{
-  "remarks": "-SinaHamidi (Privacy-Centric)  [dns1]",
-  "log": {
-    "loglevel": "warning",
-    "dnsLog": false,
-    "access": "none"
-  },
-  "policy": {
-    "levels": {
-      "0": {
-        "uplinkOnly": 0,
-        "downlinkOnly": 0
-      }
-    }
-  },
+            <div id="withFragment" class="tab-content">
+                <p>این کانفیگ را فقط در صورتی استفاده کنید که کانفیگ اول کار نکرد.</p>
+                <div class="code-box">
+                    <button class="copy-btn" onclick="copyToClipboard('xrayConfigWithFragment', 'کانفیگ با فرگمنت')"><span>کپی</span></button>
+                    <pre id="xrayConfigWithFragment">{
+  "remarks": "fragment",
+  "log": { "loglevel": "warning", "dnsLog": false, "access": "none" },
+  "policy": { "levels": { "0": { "uplinkOnly": 0, "downlinkOnly": 0 } } },
   "dns": {
-    "hosts": {
-      "geosite:category-ads-all": "#3",
-      "cloudflare-dns.com": "www.cloudflare.com",
-      "dns.google": "www.google.com"
-    },
+    "hosts": { "geosite:category-ads-all": "#3", "cloudflare-dns.com": "www.cloudflare.com", "dns.google": "www.google.com" },
     "servers": [
-      {
-        "address": "fakedns",
-        "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir",
-          "domain:dynx.pro",
-          "geosite:sanctioned",
-          "geosite:telegram",
-          "geosite:meta",
-          "geosite:youtube",
-          "geosite:twitter",
-          "geosite:reddit",
-          "geosite:twitch",
-          "geosite:tiktok",
-          "geosite:discord"
-        ],
-        "finalQuery": true
-      },
-      {
-        "tag": "personal-doh",
-        "address": "${fullDohUrl}",
-        "domains": [
-          "geosite:telegram",
-          "geosite:meta",
-          "geosite:youtube",
-          "geosite:twitter",
-          "geosite:reddit",
-          "geosite:twitch",
-          "geosite:tiktok",
-          "geosite:discord",
-          "geosite:sanctioned"
-        ],
-        "timeoutMs": 4000,
-        "finalQuery": true
-      },
-      {
-        "address": "localhost",
-        "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir"
-        ],
-        "finalQuery": true
-      }
-    ],
-    "queryStrategy": "UseSystem",
-    "useSystemHosts": true
+      { "address": "fakedns", "domains": ["domain:ir", "geosite:private", "geosite:ir", "domain:dynx.pro", "geosite:sanctioned", "geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord"], "finalQuery": true },
+      { "tag": "personal-doh", "address": "${fullDohUrl}", "domains": ["geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord", "geosite:sanctioned"], "timeoutMs": 4000, "finalQuery": true },
+      { "address": "localhost", "domains": ["domain:ir", "geosite:private", "geosite:ir"], "finalQuery": true }
+    ], "queryStrategy": "UseSystem", "useSystemHosts": true
   },
   "inbounds": [
-    {
-      "tag": "dns-in",
-      "listen": "127.0.0.1",
-      "port": 10853,
-      "protocol": "tunnel",
-      "settings": {
-        "address": "127.0.0.1",
-        "port": 53,
-        "network": "tcp,udp"
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpKeepAliveInterval": 1,
-          "tcpKeepAliveIdle": 46
-        }
-      }
-    },
-    {
-      "tag": "socks-in",
-      "listen": "127.0.0.1",
-      "port": 10808,
-      "protocol": "mixed",
-      "sniffing": {
-        "enabled": true,
-        "destOverride": [
-          "fakedns"
-        ],
-        "routeOnly": false
-      },
-      "settings": {
-        "udp": true,
-        "ip": "127.0.0.1"
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpKeepAliveInterval": 1,
-          "tcpKeepAliveIdle": 46
-        }
-      }
-    }
+    { "tag": "dns-in", "listen": "127.0.0.1", "port": 10853, "protocol": "tunnel", "settings": { "address": "127.0.0.1", "port": 53, "network": "tcp,udp" }, "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } } },
+    { "tag": "socks-in", "listen": "127.0.0.1", "port": 10808, "protocol": "mixed", "sniffing": { "enabled": true, "destOverride": ["fakedns"], "routeOnly": false }, "settings": { "udp": true, "ip": "127.0.0.1" }, "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } } }
   ],
   "outbounds": [
-    {
-      "tag": "block-out",
-      "protocol": "block"
-    },
-    {
-      "tag": "direct-out",
-      "protocol": "direct"
-    },
-    {
-      "tag": "dns-out",
-      "protocol": "dns",
-      "settings": {
-        "nonIPQuery": "reject",
-        "blockTypes": [
-          0,
-          65
-        ]
-      }
-    },
-    {
-      "tag": "smart-fragment-out",
-      "protocol": "freedom",
-      "streamSettings": {
-        "sockopt": {},
-        "tlsSettings": {
-          "fingerprint": "chrome"
-        }
-      },
-      "settings": {
-        "fragment": {
-          "packets": "1-1",
-          "length": "100-100",
-          "interval": "1-1"
-        },
-        "domainStrategy": "UseIPv4v6"
-      }
-    },
-    {
-      "tag": "udp-noises-out",
-      "protocol": "direct",
-      "settings": {
-        "targetStrategy": "ForceIP",
-        "noises": [
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"},
-            {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}
-        ]
-      }
-    }
+    { "tag": "block-out", "protocol": "block" },
+    { "tag": "direct-out", "protocol": "direct" },
+    { "tag": "dns-out", "protocol": "dns", "settings": { "nonIPQuery": "reject", "blockTypes": [0, 65] } },
+    { "tag": "smart-fragment-out", "protocol": "freedom", "streamSettings": { "sockopt": {}, "tlsSettings": { "fingerprint": "chrome" } }, "settings": { "fragment": { "packets": "1-1", "length": "100-100", "interval": "1-1" }, "domainStrategy": "UseIPv4v6" } },
+    { "tag": "udp-noises-out", "protocol": "direct", "settings": { "targetStrategy": "ForceIP", "noises": [{"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1250", "delay": "10", "applyTo": "ipv4"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}, {"type": "rand", "packet": "1230", "delay": "10", "applyTo": "ipv6"}] } }
   ],
   "routing": {
     "domainStrategy": "IPOnDemand",
     "rules": [
-      {
-        "outboundTag": "block-out",
-        "domain": [
-          "geosite:category-ads-all"
-        ]
-      },
-      {
-        "outboundTag": "block-out",
-        "ip": [
-          "geoip:irgfw-block-injected-ips",
-          "0.0.0.0",
-          "::",
-          "198.18.0.0/15",
-          "fc00::/18"
-        ]
-      },
-      {
-        "outboundTag": "dns-out",
-        "inboundTag": [
-          "dns-in"
-        ]
-      },
-      {
-        "outboundTag": "dns-out",
-        "inboundTag": [
-          "socks-in"
-        ],
-        "port": 53
-      },
-      {
-        "outboundTag": "smart-fragment-out",
-        "inboundTag": [
-          "personal-doh"
-        ]
-      },
-      {
-        "outboundTag": "direct-out",
-        "domain": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir"
-        ]
-      },
-      {
-        "outboundTag": "direct-out",
-        "ip": [
-          "geoip:private",
-          "geoip:ir"
-        ]
-      },
-      {
-        "outboundTag": "udp-noises-out",
-        "network": "udp",
-        "protocol": [
-          "quic"
-        ]
-      },
-      {
-        "outboundTag": "udp-noises-out",
-        "network": "udp",
-        "port": "443,2053,2083,2087,2096,8443"
-      },
-      {
-        "outboundTag": "direct-out",
-        "network": "udp"
-      },
-      {
-        "outboundTag": "smart-fragment-out",
-        "network": "tcp"
-      },
-      {
-        "outboundTag": "block-out",
-        "network": "tcp,udp"
-      }
+      { "outboundTag": "block-out", "domain": ["geosite:category-ads-all"] },
+      { "outboundTag": "block-out", "ip": ["geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18"] },
+      { "outboundTag": "dns-out", "inboundTag": ["dns-in"] },
+      { "outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53 },
+      { "outboundTag": "smart-fragment-out", "inboundTag": ["personal-doh"] },
+      { "outboundTag": "direct-out", "domain": ["domain:ir", "geosite:private", "geosite:ir"] },
+      { "outboundTag": "direct-out", "ip": ["geoip:private", "geoip:ir"] },
+      { "outboundTag": "udp-noises-out", "network": "udp", "protocol": ["quic"] },
+      { "outboundTag": "udp-noises-out", "network": "udp", "port": "443,2053,2083,2087,2096,8443" },
+      { "outboundTag": "direct-out", "network": "udp" },
+      { "outboundTag": "smart-fragment-out", "network": "tcp" },
+      { "outboundTag": "block-out", "network": "tcp,udp" }
     ]
   }
-}</div>
-                <button class="copy-btn" onclick="copyToClipboard('xrayConfigWithFragment')">📋 کپی کانفیگ با فرگمنت</button>
-                <br><br>
-                <strong>نکته:</strong> این کانفیگ‌ها فقط DNS را امن می‌کنند. برای دسترسی کامل به سایت‌های فیلتر شده نیاز به VPN دارید.
+}</pre>
+                </div>
             </div>
+        </section>
 
-            <div class="usage-item">
-                <strong>💻 ویندوز 11:</strong>
-                Settings → Network & Internet → Properties → DNS server assignment → Edit → Preferred DNS encryption: Encrypted only (DNS over HTTPS) و آدرس بالا را وارد کنید.
-            </div>
+        <section class="section">
+            <h2 class="section-title">سرورهای DNS استفاده شده</h2>
+            <ul class="dns-list">${dnsListHtml}</ul>
+        </section>
 
-            <div class="usage-item">
-                <strong>🔧 روتر:</strong>
-                بسته به مدل روتر، ممکن است پشتیبانی از DoH داشته باشد. به تنظیمات DNS روتر خود مراجعه کنید.
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>Designed by: <a href="https://t.me/BXAMbot" target="_blank" rel="noopener noreferrer">Anonymous</a> | Upgraded Version</p>
-        </div>
+        <section class="section">
+             <div class="warning-box">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="min-width: 24px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <p><strong>توجه:</strong> این سرویس فقط DNS را رمزنگاری می‌کند و جایگزین VPN برای عبور از فیلترینگ نیست.</p>
+             </div>
+        </section>
     </div>
 
     <script>
-        function copyToClipboard(elementId) {
+        function copyToClipboard(elementId, title) {
             const element = document.getElementById(elementId);
-            const text = element.textContent;
-            const btn = event.target;
-            const originalHTML = btn.innerHTML;
+            const text = element.tagName.toLowerCase() === 'pre' ? element.textContent : element.innerText;
             
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(() => {
-                    btn.classList.add('copied');
-                    btn.innerHTML = '✓ کپی شد!';
-                    setTimeout(() => {
-                        btn.classList.remove('copied');
-                        btn.innerHTML = originalHTML;
-                    }, 2000);
-                }).catch(() => {
-                    fallbackCopy(text, btn, originalHTML);
+            navigator.clipboard.writeText(text).then(() => {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-start',
+                    icon: 'success',
+                    title: title + ' کپی شد.',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    timerProgressBar: true,
+                    background: '#161b22',
+                    color: '#e6edf3',
+                    iconColor: '#3fb950'
                 });
-            } else {
-                fallbackCopy(text, btn, originalHTML);
-            }
+            }).catch(err => {
+                 Swal.fire({
+                    toast: true,
+                    position: 'bottom-start',
+                    icon: 'error',
+                    title: 'خطا در کپی کردن!',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    timerProgressBar: true,
+                    background: '#161b22',
+                    color: '#e6edf3',
+                    iconColor: '#f85149'
+                });
+            });
         }
         
-        function fallbackCopy(text, btn, originalHTML) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                btn.classList.add('copied');
-                btn.innerHTML = '✓ کپی شد!';
-                setTimeout(() => {
-                    btn.classList.remove('copied');
-                    btn.innerHTML = originalHTML;
-                }, 2000);
-            } catch (err) {
-                btn.innerHTML = '❌ خطا در کپی';
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                }, 2000);
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
             }
-            document.body.removeChild(textArea);
+            tablinks = document.getElementsByClassName("tab-btn");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
         }
     </script>
 </body>
