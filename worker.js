@@ -357,6 +357,7 @@ function getHomePage(requestUrl) {
             --warn-color: #f7b948;
             --warn-bg: rgba(247, 185, 72, 0.1);
             --warn-border: rgba(247, 185, 72, 0.3);
+            --input-bg: #0d1117;
         }
         @keyframes aurora-bg {
             0% { background-position: 0% 50%; }
@@ -446,7 +447,7 @@ function getHomePage(requestUrl) {
         .url-box {
             display: flex;
             align-items: center;
-            background-color: #0d1117;
+            background-color: var(--input-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 0.5rem;
@@ -476,7 +477,7 @@ function getHomePage(requestUrl) {
         .copy-btn:hover { background-color: #30363d; color: var(--text-primary); transform: scale(1.05); }
         .copy-btn:active { transform: scale(0.98); }
 
-        .dns-list { list-style: none; }
+        .dns-list { list-style: none; padding: 0;}
         .dns-item {
             display: flex;
             justify-content: space-between;
@@ -520,7 +521,7 @@ function getHomePage(requestUrl) {
 
         .code-box {
             position: relative;
-            background-color: #0d1117;
+            background-color: var(--input-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             font-family: monospace;
@@ -531,6 +532,37 @@ function getHomePage(requestUrl) {
         .code-box pre { padding: 1rem; padding-top: 3rem; white-space: pre-wrap; word-wrap: break-word; color: #b3b3b3; }
         .code-box .copy-btn { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 10; }
         
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .setting-item label {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .setting-item input {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .setting-item input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             body {
@@ -586,403 +618,30 @@ function getHomePage(requestUrl) {
                     </ul>
                 </div>
             </div>
-            <p>کانفیگ پیشنهادی برای اکثر شبکه‌ها.</p>
+
+            <h3 class="section-title" style="font-size: 1.1rem; border: none; margin-bottom: 0.5rem;">تنظیمات پیشرفته (اختیاری)</h3>
+             <div class="settings-grid">
+                <div class="setting-item">
+                    <label for="server-name">Server Name (SNI)</label>
+                    <input type="text" id="server-name" value="www.mci.ir" oninput="updateXrayConfig()">
+                </div>
+                <div class="setting-item">
+                    <label for="frag-packets">Fragment Packets</label>
+                    <input type="text" id="frag-packets" value="tlshello" oninput="updateXrayConfig()">
+                </div>
+                <div class="setting-item">
+                    <label for="frag-length">Fragment Length</label>
+                    <input type="text" id="frag-length" value="10-20" oninput="updateXrayConfig()">
+                </div>
+                <div class="setting-item">
+                    <label for="frag-interval">Fragment Interval</label>
+                    <input type="text" id="frag-interval" value="5-10" oninput="updateXrayConfig()">
+                </div>
+            </div>
+
             <div class="code-box">
                 <button class="copy-btn" onclick="copyToClipboard('xrayConfig', 'کانفیگ Xray')"><span>کپی</span></button>
-                <pre id="xrayConfig">{
-  "remarks": "personal-dns",
-  "log": {
-    "loglevel": "warning",
-    "dnsLog": false,
-    "access": "none"
-  },
-  "policy": {
-    "levels": {
-      "0": {
-        "uplinkOnly": 0,
-        "downlinkOnly": 0
-      }
-    }
-  },
-  "dns": {
-    "hosts": {
-      "geosite:category-ads-all": "#3",
-      "cloudflare-dns.com": "www.cloudflare.com",
-      "dns.google": "www.google.com"
-    },
-    "servers": [
-      {
-        "address": "fakedns",
-        "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir",
-          "domain:dynx.pro",
-          "geosite:sanctioned",
-          "geosite:telegram",
-          "geosite:meta",
-          "geosite:youtube",
-          "geosite:twitter",
-          "geosite:reddit",
-          "geosite:twitch",
-          "geosite:tiktok",
-          "geosite:discord"
-        ],
-        "finalQuery": true
-      },
-      {
-        "tag": "personal-doh",
-        "address": "${fullDohUrl}",
-        "domains": [
-          "geosite:telegram",
-          "geosite:meta",
-          "geosite:youtube",
-          "geosite:twitter",
-          "geosite:reddit",
-          "geosite:twitch",
-          "geosite:tiktok",
-          "geosite:discord",
-          "geosite:sanctioned"
-        ],
-        "timeoutMs": 4000,
-        "finalQuery": true
-      },
-      {
-        "address": "localhost",
-        "domains": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir"
-        ],
-        "finalQuery": true
-      }
-    ],
-    "queryStrategy": "UseSystem",
-    "useSystemHosts": true
-  },
-  "inbounds": [
-    {
-      "tag": "dns-in",
-      "listen": "127.0.0.1",
-      "port": 10853,
-      "protocol": "tunnel",
-      "settings": {
-        "address": "127.0.0.1",
-        "port": 53,
-        "network": "tcp,udp"
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpKeepAliveInterval": 1,
-          "tcpKeepAliveIdle": 46
-        }
-      }
-    },
-    {
-      "tag": "socks-in",
-      "listen": "127.0.0.1",
-      "port": 10808,
-      "protocol": "mixed",
-      "sniffing": {
-        "enabled": true,
-        "destOverride": [
-          "fakedns"
-        ],
-        "routeOnly": false
-      },
-      "settings": {
-        "udp": true,
-        "ip": "127.0.0.1"
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpKeepAliveInterval": 1,
-          "tcpKeepAliveIdle": 46
-        }
-      }
-    }
-  ],
-  "outbounds": [
-    {
-      "tag": "block-out",
-      "protocol": "block"
-    },
-    {
-      "tag": "direct-out",
-      "protocol": "direct",
-      "streamSettings": {
-        "sockopt": {
-          "happyEyeballs": {
-            "tryDelayMs": 100
-          }
-        }
-      }
-    },
-    {
-      "tag": "dns-out",
-      "protocol": "dns",
-      "settings": {
-        "nonIPQuery": "reject",
-        "blockTypes": [
-          0,
-          65
-        ]
-      }
-    },
-    {
-      "tag": "fragment-out",
-      "protocol": "freedom",
-      "streamSettings": {
-        "sockopt": {
-          "happyEyeballs": {
-            "tryDelayMs": 200
-          }
-        },
-        "tlsSettings": {
-          "serverName": "www.mci.ir",
-          "alpn": [
-            "h3",
-            "h2",
-            "http/1.1"
-          ],
-          "fingerprint": "randomized"
-        }
-      },
-      "settings": {
-        "fragment": {
-          "packets": "tlshello",
-          "length": "10-20",
-          "interval": "5-10"
-        },
-        "domainStrategy": "UseIPv4v6"
-      }
-    },
-    {
-      "tag": "udp-noises-out",
-      "protocol": "direct",
-      "settings": {
-        "targetStrategy": "ForceIP",
-        "noises": [
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1250",
-            "delay": "10",
-            "applyTo": "ipv4"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          },
-          {
-            "type": "rand",
-            "packet": "1230",
-            "delay": "10",
-            "applyTo": "ipv6"
-          }
-        ]
-      }
-    }
-  ],
-  "routing": {
-    "domainStrategy": "IPOnDemand",
-    "rules": [
-      {
-        "outboundTag": "block-out",
-        "port": 0
-      },
-      {
-        "outboundTag": "block-out",
-        "domain": [
-          "geosite:category-ads-all"
-        ]
-      },
-      {
-        "outboundTag": "block-out",
-        "ip": [
-          "geoip:irgfw-block-injected-ips",
-          "0.0.0.0",
-          "::",
-          "198.18.0.0/15",
-          "fc00::/18"
-        ]
-      },
-      {
-        "outboundTag": "dns-out",
-        "inboundTag": [
-          "dns-in"
-        ]
-      },
-      {
-        "outboundTag": "dns-out",
-        "inboundTag": [
-          "socks-in"
-        ],
-        "port": 53
-      },
-      {
-        "outboundTag": "fragment-out",
-        "inboundTag": [
-          "personal-doh"
-        ]
-      },
-      {
-        "outboundTag": "direct-out",
-        "domain": [
-          "domain:ir",
-          "geosite:private",
-          "geosite:ir"
-        ]
-      },
-      {
-        "outboundTag": "direct-out",
-        "ip": [
-          "geoip:private",
-          "geoip:ir"
-        ]
-      },
-      {
-        "outboundTag": "udp-noises-out",
-        "network": "udp",
-        "protocol": [
-          "quic"
-        ]
-      },
-      {
-        "outboundTag": "udp-noises-out",
-        "network": "udp",
-        "port": "443,2053,2083,2087,2096,8443"
-      },
-      {
-        "outboundTag": "direct-out",
-        "network": "udp"
-      },
-      {
-        "outboundTag": "fragment-out",
-        "network": "tcp",
-        "protocol": [
-          "tls"
-        ]
-      },
-      {
-        "outboundTag": "fragment-out",
-        "network": "tcp",
-        "port": "80,443,8080,8443,2052,2053,2082,2083,2086,2087,2095,2096"
-      },
-      {
-        "outboundTag": "fragment-out",
-        "network": "tcp"
-      },
-      {
-        "outboundTag": "block-out",
-        "network": "tcp,udp"
-      }
-    ]
-  }
-}</pre>
+                <pre id="xrayConfig"></pre>
             </div>
         </section>
 
@@ -1032,6 +691,139 @@ function getHomePage(requestUrl) {
                 });
             });
         }
+        
+        function updateXrayConfig() {
+            const serverName = document.getElementById('server-name').value;
+            const fragPackets = document.getElementById('frag-packets').value;
+            const fragLength = document.getElementById('frag-length').value;
+            const fragInterval = document.getElementById('frag-interval').value;
+            const fullDohUrl = document.getElementById('dohUrl').innerText;
+
+            const config = {
+              "remarks": "personal-dns",
+              "log": {
+                "loglevel": "warning",
+                "dnsLog": false,
+                "access": "none"
+              },
+              "policy": {
+                "levels": {
+                  "0": {
+                    "uplinkOnly": 0,
+                    "downlinkOnly": 0
+                  }
+                }
+              },
+              "dns": {
+                "hosts": {
+                  "geosite:category-ads-all": "#3",
+                  "cloudflare-dns.com": "www.cloudflare.com",
+                  "dns.google": "www.google.com"
+                },
+                "servers": [
+                  {
+                    "address": "fakedns",
+                    "domains": [
+                      "domain:ir", "geosite:private", "geosite:ir", "domain:dynx.pro",
+                      "geosite:sanctioned", "geosite:telegram", "geosite:meta", "geosite:youtube",
+                      "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord"
+                    ],
+                    "finalQuery": true
+                  },
+                  {
+                    "tag": "personal-doh",
+                    "address": fullDohUrl,
+                    "domains": [
+                      "geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter",
+                      "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord", "geosite:sanctioned"
+                    ],
+                    "timeoutMs": 4000,
+                    "finalQuery": true
+                  },
+                  {
+                    "address": "localhost",
+                    "domains": [ "domain:ir", "geosite:private", "geosite:ir" ],
+                    "finalQuery": true
+                  }
+                ],
+                "queryStrategy": "UseSystem",
+                "useSystemHosts": true
+              },
+              "inbounds": [
+                {
+                  "tag": "dns-in", "listen": "127.0.0.1", "port": 10853, "protocol": "tunnel",
+                  "settings": { "address": "127.0.0.1", "port": 53, "network": "tcp,udp" },
+                  "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } }
+                },
+                {
+                  "tag": "socks-in", "listen": "127.0.0.1", "port": 10808, "protocol": "mixed",
+                  "sniffing": { "enabled": true, "destOverride": [ "fakedns" ], "routeOnly": false },
+                  "settings": { "udp": true, "ip": "127.0.0.1" },
+                  "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } }
+                }
+              ],
+              "outbounds": [
+                { "tag": "block-out", "protocol": "block" },
+                {
+                  "tag": "direct-out", "protocol": "direct",
+                  "streamSettings": { "sockopt": { "happyEyeballs": { "tryDelayMs": 100 } } }
+                },
+                {
+                  "tag": "dns-out", "protocol": "dns",
+                  "settings": { "nonIPQuery": "reject", "blockTypes": [ 0, 65 ] }
+                },
+                {
+                  "tag": "fragment-out", "protocol": "freedom",
+                  "streamSettings": {
+                    "sockopt": { "happyEyeballs": { "tryDelayMs": 200 } },
+                    "tlsSettings": {
+                      "serverName": serverName,
+                      "alpn": [ "h3", "h2", "http/1.1" ],
+                      "fingerprint": "randomized"
+                    }
+                  },
+                  "settings": {
+                    "fragment": {
+                      "packets": fragPackets,
+                      "length": fragLength,
+                      "interval": fragInterval
+                    },
+                    "domainStrategy": "UseIPv4v6"
+                  }
+                },
+                {
+                  "tag": "udp-noises-out", "protocol": "direct",
+                  "settings": { "targetStrategy": "ForceIP", "noises": new Array(10).fill({"type": "rand","packet": "1250","delay": "10","applyTo": "ipv4"}).concat(new Array(10).fill({"type": "rand","packet": "1230","delay": "10","applyTo": "ipv6"})) }
+                }
+              ],
+              "routing": {
+                "domainStrategy": "IPOnDemand",
+                "rules": [
+                  { "outboundTag": "block-out", "port": 0 },
+                  { "outboundTag": "block-out", "domain": [ "geosite:category-ads-all" ] },
+                  { "outboundTag": "block-out", "ip": [ "geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18" ] },
+                  { "outboundTag": "dns-out", "inboundTag": [ "dns-in" ] },
+                  { "outboundTag": "dns-out", "inboundTag": [ "socks-in" ], "port": 53 },
+                  { "outboundTag": "fragment-out", "inboundTag": [ "personal-doh" ] },
+                  { "outboundTag": "direct-out", "domain": [ "domain:ir", "geosite:private", "geosite:ir" ] },
+                  { "outboundTag": "direct-out", "ip": [ "geoip:private", "geoip:ir" ] },
+                  { "outboundTag": "udp-noises-out", "network": "udp", "protocol": [ "quic" ] },
+                  { "outboundTag": "udp-noises-out", "network": "udp", "port": "443,2053,2083,2087,2096,8443" },
+                  { "outboundTag": "direct-out", "network": "udp" },
+                  { "outboundTag": "fragment-out", "network": "tcp", "protocol": [ "tls" ] },
+                  { "outboundTag": "fragment-out", "network": "tcp", "port": "80,443,8080,8443,2052,2053,2082,2083,2086,2087,2095,2096" },
+                  { "outboundTag": "fragment-out", "network": "tcp" },
+                  { "outboundTag": "block-out", "network": "tcp,udp" }
+                ]
+              }
+            };
+            
+            document.getElementById('xrayConfig').textContent = JSON.stringify(config, null, 2);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateXrayConfig();
+        });
     </script>
 </body>
 </html>`;
