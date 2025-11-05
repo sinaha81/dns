@@ -47,7 +47,7 @@
       },
       {
         "tag": "personal-doh",
-        "address": "https://dns1.fxsinahamidi.workers.dev/dns-query",
+        "address": "https://.workers.dev/dns-query",
         "domains": [
           "geosite:telegram",
           "geosite:meta",
