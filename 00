@@ -1,0 +1,582 @@
+{
+  "remarks": "best-fragment-personal-doh",
+  "log": {
+    "loglevel": "warning"
+  },
+  "policy": {
+    "levels": {
+      "0": {}
+    }
+  },
+  "dns": {
+    "unexpectedIPs": [
+      "geoip:cn",
+      "10.10.34.34",
+      "10.10.34.35",
+      "10.10.34.36"
+    ],
+    "hosts": {
+      "geosite:category-ads-all": [
+        "#3"
+      ],
+      "geosite:category-ads-ir": [
+        "#3"
+      ],
+      "cloudflare-dns.com": "www.cloudflare.com",
+      "dns.google": "www.google.com"
+    },
+    "servers": [
+      {
+        "address": "fakedns",
+        "domains": [
+          "domain:ir",
+          "geosite:private",
+          "geosite:ir",
+          "domain:dynx.pro",
+          "geosite:sanctioned",
+          "geosite:telegram",
+          "geosite:meta",
+          "geosite:youtube",
+          "geosite:twitter",
+          "geosite:reddit",
+          "geosite:twitch",
+          "geosite:tiktok",
+          "geosite:discord"
+        ],
+        "finalQuery": true
+      },
+      {
+        "tag": "personal-doh",
+        "address": "https://.workers.dev/dns-query",
+        "domains": [
+          "geosite:telegram",
+          "geosite:meta",
+          "geosite:youtube",
+          "geosite:twitter",
+          "geosite:reddit",
+          "geosite:twitch",
+          "geosite:tiktok",
+          "geosite:discord",
+          "geosite:sanctioned"
+        ],
+        "timeoutMs": 4000,
+        "finalQuery": true
+      },
+      {
+        "address": "localhost",
+        "domains": [
+          "domain:ir",
+          "geosite:private",
+          "geosite:ir"
+        ],
+        "finalQuery": true
+      }
+    ],
+    "queryStrategy": "UseSystem",
+    "useSystemHosts": true
+  },
+  "inbounds": [
+    {
+      "tag": "dns-in",
+      "listen": "127.0.0.1",
+      "port": 10853,
+      "protocol": "tunnel",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 53,
+        "network": "tcp,udp"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveInterval": 1,
+          "tcpKeepAliveIdle": 46
+        }
+      }
+    },
+    {
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "protocol": "mixed",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "fakedns"
+        ],
+        "routeOnly": false
+      },
+      "settings": {
+        "udp": true,
+        "ip": "127.0.0.1"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpKeepAliveInterval": 1,
+          "tcpKeepAliveIdle": 46
+        }
+      }
+    }
+  ],
+  "observatory": {
+    "subjectSelector": [
+      "probe-"
+    ],
+    "probeUrl": "https://www.gstatic.com/generate_204",
+    "probeInterval": "30s"
+  },
+  "outbounds": [
+    {
+      "tag": "block-out",
+      "protocol": "block"
+    },
+    {
+      "tag": "dns-out",
+      "protocol": "dns"
+    },
+    {
+      "tag": "direct-out",
+      "protocol": "direct",
+      "streamSettings": {
+        "sockopt": {
+          "domainStrategy": "ForceIP",
+          "happyEyeballs": {
+            "tryDelayMs": 250,
+            "prioritizeIPv6": false,
+            "interleave": 2,
+            "maxConcurrentTry": 4
+          }
+        }
+      }
+    },
+    {
+      "tag": "udp-noises-out",
+      "protocol": "direct",
+      "settings": {
+        "targetStrategy": "ForceIP",
+        "noises": [
+          {
+            "type": "rand",
+            "packet": "1220-1250",
+            "delay": "10-20",
+            "applyTo": "ipv4"
+          },
+          {
+            "type": "rand",
+            "packet": "1220-1250",
+            "delay": "10-20",
+            "applyTo": "ipv6"
+          }
+        ]
+      }
+    },
+    {
+      "tag": "frag-rule-1",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "tlshello",
+          "length": "5-15",
+          "interval": "5-10"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-2",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-1",
+          "length": "10-20",
+          "interval": "5-10"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-3",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-1",
+          "length": "20-40",
+          "interval": "10-15"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-4",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-1",
+          "length": "40-60",
+          "interval": "10-20"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-5",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-2",
+          "length": "1-10",
+          "interval": "1-5"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-6",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-3",
+          "length": "30-50",
+          "interval": "10-15"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-7",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "tlshello",
+          "length": "10-25",
+          "interval": "10-20"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-8",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-1",
+          "length": "80-100",
+          "interval": "20-30"
+        }
+      }
+    },
+    {
+      "tag": "frag-rule-9",
+      "protocol": "freedom",
+      "settings": {
+        "fragment": {
+          "packets": "1-1",
+          "length": "100-200",
+          "interval": "1-1"
+        }
+      }
+    },
+    {
+      "tag": "probe-1",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-1"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-2",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-2"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-3",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-3"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-4",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-4"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-5",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-5"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-6",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-6"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-7",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-7"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-8",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-8"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    },
+    {
+      "tag": "probe-9",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv4v6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "dialerProxy": "frag-rule-9"
+        },
+        "tlsSettings": {
+          "serverName": "www.mci.ir",
+          "alpn": [
+            "h3",
+            "h2",
+            "http/1.1"
+          ],
+          "fingerprint": "chrome"
+        }
+      }
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPOnDemand",
+    "balancers": [
+      {
+        "tag": "auto-balancer",
+        "selector": [
+          "probe-"
+        ],
+        "strategy": {
+          "type": "leastPing"
+        }
+      }
+    ],
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "block-out",
+        "port": 0
+      },
+      {
+        "type": "field",
+        "outboundTag": "block-out",
+        "domain": [
+          "geosite:category-ads-all"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "block-out",
+        "ip": [
+          "geoip:irgfw-block-injected-ips",
+          "0.0.0.0",
+          "::",
+          "198.18.0.0/15",
+          "fc00::/18"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "dns-out",
+        "inboundTag": [
+          "dns-in"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "dns-out",
+        "inboundTag": [
+          "socks-in"
+        ],
+        "port": 53
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct-out",
+        "domain": [
+          "domain:ir",
+          "geosite:private",
+          "geosite:ir"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct-out",
+        "ip": [
+          "geoip:private",
+          "geoip:ir"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "udp-noises-out",
+        "network": "udp",
+        "protocol": [
+          "quic"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "udp-noises-out",
+        "network": "udp",
+        "port": "443,2053,2083,2087,2096,8443"
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct-out",
+        "network": "udp"
+      },
+      {
+        "type": "field",
+        "balancerTag": "auto-balancer",
+        "inboundTag": [
+          "personal-doh"
+        ]
+      },
+      {
+        "type": "field",
+        "balancerTag": "auto-balancer",
+        "network": "tcp",
+        "protocol": [
+          "tls"
+        ]
+      },
+      {
+        "type": "field",
+        "balancerTag": "auto-balancer",
+        "network": "tcp",
+        "port": "80,443,8080,8443,2052,2053,2082,2083,2086,2087,2095,2096"
+      },
+      {
+        "type": "field",
+        "balancerTag": "auto-balancer",
+        "network": "tcp"
+      },
+      {
+        "type": "field",
+        "outboundTag": "block-out",
+        "network": "tcp,udp"
+      }
+    ]
+  }
+}
