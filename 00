@@ -47,7 +47,7 @@
       },
       {
         "tag": "personal-doh",
-        "address": "https://.workers.dev/dns-query",
+        "address": "https://dns1.fxsinahamidi.workers.dev/dns-query",
         "domains": [
           "geosite:telegram",
           "geosite:meta",
@@ -122,7 +122,7 @@
       "probe-"
     ],
     "probeUrl": "https://www.gstatic.com/generate_204",
-    "probeInterval": "30s"
+    "probeInterval": "12s"
   },
   "outbounds": [
     {
@@ -281,7 +281,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -302,7 +302,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -323,7 +323,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -344,7 +344,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -365,7 +365,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -386,7 +386,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -407,7 +407,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -428,7 +428,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
@@ -449,7 +449,7 @@
         "tlsSettings": {
           "serverName": "www.mci.ir",
           "alpn": [
-            "h3",
+            
             "h2",
             "http/1.1"
           ],
