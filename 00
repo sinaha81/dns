@@ -49,7 +49,7 @@ async function handleRequest(request) {
         return new Response(dnsResponse.body, {
           status: dnsResponse.status,
           headers: {
-            'Content-Type': 'application-dns-message',
+            'Content-Type': 'application/dns-message',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
@@ -527,7 +527,7 @@ divar.ir</textarea>
         </details>
 
         <div class="warning-box">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="min-width: 24px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="min-width: 24px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
             <p><strong>توجه:</strong> این سرویس فقط DNS را رمزنگاری می‌کند و جایگزین VPN برای عبور از فیلترینگ نیست.</p>
         </div>
     </div>
@@ -574,7 +574,7 @@ divar.ir</textarea>
             if (serverNameDomains.length > 0) {
                 serverName = serverNameDomains[Math.floor(Math.random() * serverNameDomains.length)];
             } else {
-                serverName = 'www.mci.ir'; // Fallback
+                serverName = 'www.mci.ir';
             }
 
             const fingerprint = document.getElementById('fingerprint-select').value;
@@ -586,7 +586,6 @@ divar.ir</textarea>
             const alpnValue = document.getElementById('alpn-select').value;
             const alpnArray = alpnValue.split(',').map(s => s.trim()).filter(Boolean);
             
-            // Base DNS and Inbounds objects, shared across configs
             const baseDnsObject = {
                 "unexpectedIPs": ["geoip:cn", "10.10.34.34", "10.10.34.35", "10.10.34.36"],
                 "hosts": {"geosite:category-ads-all": "#3", "geosite:category-ads-ir": "#3", "cloudflare-dns.com": "www.cloudflare.com", "dns.google": "www.google.com"},
@@ -605,8 +604,10 @@ divar.ir</textarea>
 
             const fixFragmentConfig = {
               "remarks": "fix-fragment-personal-doh",
-              "log": {"loglevel": "warning"}, "policy": {"levels": {"0": {}}},
-              "dns": baseDnsObject, "inbounds": baseInbounds,
+              "log": {"loglevel": "warning"},
+              "policy": {"levels": {"0": {}}},
+              "dns": baseDnsObject,
+              "inbounds": baseInbounds,
               "outbounds": [
                 {"tag": "block-out", "protocol": "block"},
                 {"tag": "direct-out", "protocol": "direct", "streamSettings": {"sockopt": {"domainStrategy": "ForceIP", "happyEyeballs": {"tryDelayMs": 200, "prioritizeIPv6": true}}}},
@@ -617,9 +618,11 @@ divar.ir</textarea>
               "routing": {
                 "domainStrategy": "IPOnDemand",
                 "rules": [
-                  {"outboundTag": "block-out", "port": 0}, {"outboundTag": "block-out", "domain": ["geosite:category-ads-all", "geosite:category-ads-ir"]},
+                  {"outboundTag": "block-out", "port": 0},
+                  {"outboundTag": "block-out", "domain": ["geosite:category-ads-all", "geosite:category-ads-ir"]},
                   {"outboundTag": "block-out", "ip": ["geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18"]},
-                  {"outboundTag": "dns-out", "inboundTag": ["dns-in"]}, {"outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53},
+                  {"outboundTag": "dns-out", "inboundTag": ["dns-in"]},
+                  {"outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53},
                   {"outboundTag": "fragment-out", "inboundTag": ["personal-doh"]},
                   {"outboundTag": "direct-out", "domain": ["domain:ir", "geosite:private", "geosite:ir"]},
                   {"outboundTag": "direct-out", "ip": ["geoip:private", "geoip:ir"]},
@@ -639,9 +642,7 @@ divar.ir</textarea>
               "remarks": "best-fragment-personal-doh",
               "log": {"loglevel": "warning"},
               "policy": {"levels": {"0": {}}},
-              "dns": {
-                ...baseDnsObject
-              },
+              "dns": baseDnsObject,
               "inbounds": baseInbounds,
               "observatory": {"subjectSelector": ["probe-"], "probeUrl": "https://www.gstatic.com/generate_204", "probeInterval": probeInterval},
               "outbounds": [
@@ -689,9 +690,7 @@ divar.ir</textarea>
               "remarks": "no-fragment-personal-doh",
               "log": { "loglevel": "warning" },
               "policy": { "levels": { "0": {} } },
-              "dns": {
-                ...baseDnsObject
-              },
+              "dns": baseDnsObject,
               "inbounds": baseInbounds,
               "outbounds": [
                 { "tag": "block-out", "protocol": "block" },
