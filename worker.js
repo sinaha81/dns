@@ -1,5 +1,3 @@
-
-
 const UPSTREAM_DNS_PROVIDERS = [
   { name: "Cloudflare", url: "https://cloudflare-dns.com/dns-query", weight: 25, category: "عمومی و سریع", description: "تمرکز بر سرعت و حریم خصوصی، بدون ذخیره لاگ." },
   { name: "Google", url: "https://dns.google/dns-query", weight: 20, category: "عمومی و سریع", description: "پایداری و سرعت بالا در سراسر جهان." },
@@ -15,13 +13,9 @@ const RATE_LIMIT_REQUESTS = 100;
 const RATE_LIMIT_WINDOW = 60000;
 const rateLimitMap = new Map();
 
-// --- EVENT LISTENER ---
-
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
 });
-
-// --- MAIN REQUEST HANDLER ---
 
 async function handleRequest(request) {
   const url = new URL(request.url);
@@ -82,8 +76,6 @@ async function handleRequest(request) {
     }
   });
 }
-
-// --- DOH CORE LOGIC ---
 
 function selectProvider(providers) {
   const totalWeight = providers.reduce((sum, provider) => sum + provider.weight, 0);
@@ -169,8 +161,6 @@ function handleOptions() {
     }
   });
 }
-
-// --- UTILITY FUNCTIONS ---
 
 function generateAppleProfile(requestUrl) {
   const baseUrl = new URL(requestUrl);
@@ -259,8 +249,6 @@ function checkRateLimit(clientIP) {
 function isValidBase64Url(str) {
   return /^[A-Za-z0-9_-]+$/.test(str);
 }
-
-// --- HTML PAGE GENERATOR ---
 
 function getHomePage(requestUrl) {
   const fullDohUrl = new URL('/dns-query', requestUrl).href;
@@ -388,7 +376,7 @@ function getHomePage(requestUrl) {
         .code-box { position: relative; }
         .code-box pre {
             background-color: rgba(13, 17, 23, 0.8); border: 1px solid var(--border-color); border-radius: 6px;
-            padding: 1rem; font-family: monospace; font-size: 0.9em; max-height: 280px;
+            padding: 1rem; font-family: monospace; font-size: 0.9em; max-height: 400px;
             overflow: auto; white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary);
         }
         .code-box .copy-btn { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 10; padding: 0.5rem 0.8rem; }
@@ -400,13 +388,15 @@ function getHomePage(requestUrl) {
         .setting-item label {
             display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;
         }
-        .setting-item input, .setting-item select {
+        .setting-item input, .setting-item select, .setting-item textarea {
             width: 100%; background-color: var(--input-bg); border: 1px solid var(--border-color);
-            color: var(--text-primary); padding: 0.6rem 0.8rem; border-radius: 6px; font-family: monospace;
+            color: var(--text-primary); padding: 0.6rem 0.8rem; border-radius: 6px;
             font-size: 0.9rem; transition: border-color 0.2s, box-shadow 0.2s;
+            resize: vertical;
         }
-        .setting-item select { font-family: 'Vazirmatn', sans-serif; }
-        .setting-item input:focus, .setting-item select:focus {
+        .setting-item select, .setting-item textarea { font-family: 'Vazirmatn', sans-serif; }
+        .setting-item input { font-family: monospace; }
+        .setting-item input:focus, .setting-item select:focus, .setting-item textarea:focus {
             outline: none; border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
         }
@@ -436,7 +426,7 @@ function getHomePage(requestUrl) {
         </header>
 
         <details class="card" open>
-            <summary>   </summary>
+            <summary>تنظیمات عمومی</summary>
             <div class="card-content">
                 <p>برای استفاده، یکی از کانفیگ‌های زیر را کپی کرده و به صورت دستی در کلاینت V2Ray خود (مانند v2rayNG) با استفاده از گزینه <code>Import config from Clipboard</code> وارد کنید. تنظیمات زیر بر روی تمام کانفیگ‌ها اعمال می‌شوند.</p>
                 <div class="url-box">
@@ -444,11 +434,27 @@ function getHomePage(requestUrl) {
                     <button class="copy-btn" onclick="copyToClipboard('dohUrl', 'آدرس سرویس')">کپی</button>
                 </div>
                 <div class="settings-grid">
-                    <div class="setting-item">
-                        <label for="server-name">Server Name (SNI)</label>
-                        <input type="text" id="server-name" value="www.mci.ir" oninput="updateAllConfigs()">
+                    <div class="setting-item" style="grid-column: 1 / -1;">
+                        <label for="servername-list">لیست Server Name (هر دامنه در یک خط - یک مورد تصادفی انتخاب می‌شود)</label>
+                        <textarea id="servername-list" rows="4" oninput="updateAllConfigs()">www.mci.ir
+www.irancell.ir
+digikala.com
+soft98.ir
+divar.ir</textarea>
                     </div>
-                     <div class="setting-item">
+                    <div class="setting-item">
+                        <label for="alpn-select">ALPN</label>
+                        <select id="alpn-select" onchange="updateAllConfigs()">
+                            <option value="h2,http/1.1" selected>h2, http/1.1 (پیش‌فرض)</option>
+                            <option value="http/1.1">http/1.1</option>
+                            <option value="h2">h2</option>
+                            <option value="h3">h3</option>
+                            <option value="h3,h2">h3, h2</option>
+                            <option value="h3,http/1.1">h3, http/1.1</option>
+                            <option value="h3,h2,http/1.1">h3, h2, http/1.1</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
                         <label for="fingerprint-select">TLS Fingerprint</label>
                         <select id="fingerprint-select" onchange="updateAllConfigs()">
                             <option value="chrome">Chrome (Default)</option>
@@ -459,6 +465,10 @@ function getHomePage(requestUrl) {
                             <option value="random">Random</option>
                             <option value="randomized">Randomized</option>
                         </select>
+                    </div>
+                     <div class="setting-item">
+                        <label for="probe-interval">Probe Interval (ثانیه)</label>
+                        <input type="text" id="probe-interval" value="12s" oninput="updateAllConfigs()">
                     </div>
                     <div class="setting-item">
                         <label for="frag-packets">Fragment Packets</label>
@@ -476,7 +486,7 @@ function getHomePage(requestUrl) {
             </div>
         </details>
         
-        <details class="card">
+        <details class="card" open>
             <summary>۱. کانفیگ Fix Fragment</summary>
             <div class="card-content">
                 <p>این کانفیگ پایه از تنظیمات سراسری بالا برای Fragment استفاده می‌کند. آن را کپی و در کلاینت خود وارد کنید.</p>
@@ -490,7 +500,7 @@ function getHomePage(requestUrl) {
         <details class="card" open>
             <summary>۲. کانفیگ Best Fragment (پیشرفته)</summary>
             <div class="card-content">
-                <p>این کانفیگ از چندین قانون fragment مختلف استفاده کرده و به صورت خودکار بهترین مورد را از طریق تست پینگ انتخاب می‌کند. SNI و Fingerprint این کانفیگ از تنظیمات سراسری بالا پیروی می‌کنند.</p>
+                <p>این کانفیگ از چندین قانون fragment مختلف استفاده کرده و به صورت خودکار بهترین مورد را از طریق تست پینگ انتخاب می‌کند. Server Name, ALPN و Fingerprint این کانفیگ از تنظیمات سراسری بالا پیروی می‌کنند.</p>
                 <div class="code-box">
                     <button class="copy-btn" onclick="copyToClipboard('bestFragmentConfig', 'کانفیگ Best Fragment')">کپی</button>
                     <pre id="bestFragmentConfig"></pre>
@@ -501,7 +511,7 @@ function getHomePage(requestUrl) {
         <details class="card" open>
             <summary>۳. کانفیگ بدون Fragment</summary>
             <div class="card-content">
-                <p>این کانفیگ برای شبکه‌هایی مناسب است که نیازی به تکه‌تکه کردن بسته‌ها (fragmentation) ندارند. SNI و Fingerprint این کانفیگ نیز از تنظیمات سراسری بالا پیروی می‌کنند.</p>
+                <p>این کانفیگ برای شبکه‌هایی مناسب است که نیازی به تکه‌تکه کردن بسته‌ها (fragmentation) ندارند. Server Name, ALPN و Fingerprint این کانفیگ نیز از تنظیمات سراسری بالا پیروی می‌کنند.</p>
                 <div class="code-box">
                     <button class="copy-btn" onclick="copyToClipboard('noFragmentConfig', 'کانفیگ No Fragment')">کپی</button>
                     <pre id="noFragmentConfig"></pre>
@@ -517,7 +527,7 @@ function getHomePage(requestUrl) {
         </details>
 
         <div class="warning-box">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="min-width: 24px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="min-width: 24px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
             <p><strong>توجه:</strong> این سرویس فقط DNS را رمزنگاری می‌کند و جایگزین VPN برای عبور از فیلترینگ نیست.</p>
         </div>
     </div>
@@ -557,18 +567,28 @@ function getHomePage(requestUrl) {
         }
         
         function updateAllConfigs() {
-            // Read all values from the global settings panel
-            const serverName = document.getElementById('server-name').value;
+            const serverNameListText = document.getElementById('servername-list').value;
+            const serverNameDomains = serverNameListText.split('\\n').map(s => s.trim()).filter(Boolean);
+            
+            let serverName;
+            if (serverNameDomains.length > 0) {
+                serverName = serverNameDomains[Math.floor(Math.random() * serverNameDomains.length)];
+            } else {
+                serverName = 'www.mci.ir';
+            }
+
             const fingerprint = document.getElementById('fingerprint-select').value;
+            const probeInterval = document.getElementById('probe-interval').value;
             const fragPackets = document.getElementById('frag-packets').value;
             const fragLength = document.getElementById('frag-length').value;
             const fragInterval = document.getElementById('frag-interval').value;
             const fullDohUrl = document.getElementById('dohUrl').innerText;
-
-            // --- Template for shared parts of the configs ---
-            const baseDns = {
+            const alpnValue = document.getElementById('alpn-select').value;
+            const alpnArray = alpnValue.split(',').map(s => s.trim()).filter(Boolean);
+            
+            const baseDnsObject = {
                 "unexpectedIPs": ["geoip:cn", "10.10.34.34", "10.10.34.35", "10.10.34.36"],
-                "hosts": {"geosite:category-ads-all": "#3", "cloudflare-dns.com": "www.cloudflare.com", "dns.google": "www.google.com"},
+                "hosts": {"geosite:category-ads-all": "#3", "geosite:category-ads-ir": "#3", "cloudflare-dns.com": "www.cloudflare.com", "dns.google": "www.google.com"},
                 "servers": [
                   {"address": "fakedns", "domains": ["domain:ir", "geosite:private", "geosite:ir", "domain:dynx.pro", "geosite:sanctioned", "geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord"], "finalQuery": true},
                   {"tag": "personal-doh", "address": fullDohUrl, "domains": ["geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord", "geosite:sanctioned"], "timeoutMs": 4000, "finalQuery": true},
@@ -576,29 +596,33 @@ function getHomePage(requestUrl) {
                 ],
                 "queryStrategy": "UseSystem", "useSystemHosts": true
             };
+
             const baseInbounds = [
                 {"tag": "dns-in", "listen": "127.0.0.1", "port": 10853, "protocol": "tunnel", "settings": {"address": "127.0.0.1", "port": 53, "network": "tcp,udp"}, "streamSettings": {"sockopt": {"tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46}}},
                 {"tag": "socks-in", "listen": "127.0.0.1", "port": 10808, "protocol": "mixed", "sniffing": {"enabled": true, "destOverride": ["fakedns"], "routeOnly": false}, "settings": {"udp": true, "ip": "127.0.0.1"}, "streamSettings": {"sockopt": {"tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46}}}
             ];
 
-            // 1. Update Fix Fragment Config
             const fixFragmentConfig = {
               "remarks": "fix-fragment-personal-doh",
-              "log": {"loglevel": "warning"}, "policy": {"levels": {"0": {}}},
-              "dns": baseDns, "inbounds": baseInbounds,
+              "log": {"loglevel": "warning"},
+              "policy": {"levels": {"0": {}}},
+              "dns": baseDnsObject,
+              "inbounds": baseInbounds,
               "outbounds": [
                 {"tag": "block-out", "protocol": "block"},
-                {"tag": "direct-out", "protocol": "direct", "streamSettings": {"sockopt": {"domainStrategy": "ForceIP", "happyEyeballs": {"tryDelayMs": 100, "prioritizeIPv6": true}}}},
-                {"tag": "dns-out", "protocol": "dns", "settings": {"nonIPQuery": "reject", "blockTypes": [0, 65]}},
-                {"tag": "fragment-out", "protocol": "freedom", "streamSettings": {"sockopt": {"happyEyeballs": {"tryDelayMs": 200}}, "tlsSettings": {"serverName": serverName, "alpn": ["h3", "h2", "http/1.1"], "fingerprint": fingerprint}}, "settings": {"fragment": {"packets": fragPackets, "length": fragLength, "interval": fragInterval}, "domainStrategy": "UseIPv4v6"}},
+                {"tag": "direct-out", "protocol": "direct", "streamSettings": {"sockopt": {"domainStrategy": "ForceIP", "happyEyeballs": {"tryDelayMs": 200, "prioritizeIPv6": true}}}},
+                {"tag": "dns-out", "protocol": "dns"},
+                {"tag": "fragment-out", "protocol": "freedom", "streamSettings": {"sockopt": {"happyEyeballs": {"tryDelayMs": 200, "prioritizeIPv6": true}}, "tlsSettings": {"serverName": serverName, "alpn": alpnArray, "fingerprint": fingerprint}}, "settings": {"fragment": {"packets": fragPackets, "length": fragLength, "interval": fragInterval}, "domainStrategy": "UseIPv4v6"}},
                 {"tag": "udp-noises-out", "protocol": "direct", "settings": {"targetStrategy": "ForceIP", "noises": [{"type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv4"}, {"type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv6"}]}}
               ],
               "routing": {
                 "domainStrategy": "IPOnDemand",
                 "rules": [
-                  {"outboundTag": "block-out", "port": 0}, {"outboundTag": "block-out", "domain": ["geosite:category-ads-all"]},
+                  {"outboundTag": "block-out", "port": 0},
+                  {"outboundTag": "block-out", "domain": ["geosite:category-ads-all", "geosite:category-ads-ir"]},
                   {"outboundTag": "block-out", "ip": ["geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18"]},
-                  {"outboundTag": "dns-out", "inboundTag": ["dns-in"]}, {"outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53},
+                  {"outboundTag": "dns-out", "inboundTag": ["dns-in"]},
+                  {"outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53},
                   {"outboundTag": "fragment-out", "inboundTag": ["personal-doh"]},
                   {"outboundTag": "direct-out", "domain": ["domain:ir", "geosite:private", "geosite:ir"]},
                   {"outboundTag": "direct-out", "ip": ["geoip:private", "geoip:ir"]},
@@ -613,26 +637,29 @@ function getHomePage(requestUrl) {
               }
             };
             document.getElementById('fixFragmentConfig').textContent = JSON.stringify(fixFragmentConfig, null, 2);
-
-            // 2. Update Best Fragment Config
+            
             const bestFragmentConfig = {
               "remarks": "best-fragment-personal-doh",
-              "log": {"loglevel": "warning"}, "policy": {"levels": {"0": {}}},
-              "dns": baseDns, "inbounds": baseInbounds,
-              "observatory": {"subjectSelector": ["probe-"], "probeUrl": "https://www.gstatic.com/generate_204", "probeInterval": "30s"},
+              "log": {"loglevel": "warning"},
+              "policy": {"levels": {"0": {}}},
+              "dns": baseDnsObject,
+              "inbounds": baseInbounds,
+              "observatory": {"subjectSelector": ["probe-"], "probeUrl": "https://www.gstatic.com/generate_204", "probeInterval": probeInterval},
               "outbounds": [
                 {"tag": "block-out", "protocol": "block"}, {"tag": "dns-out", "protocol": "dns"},
-                {"tag": "direct-out", "protocol": "direct", "streamSettings": {"sockopt": {"domainStrategy": "ForceIP", "happyEyeballs": {"tryDelayMs": 100}}}},
+                {"tag": "direct-out", "protocol": "direct", "streamSettings": {"sockopt": {"domainStrategy": "ForceIP", "happyEyeballs": {"tryDelayMs": 250, "prioritizeIPv6": true, "interleave": 2, "maxConcurrentTry": 4}}}},
                 {"tag": "udp-noises-out", "protocol": "direct", "settings": {"targetStrategy": "ForceIP", "noises": [{"type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv4"}, {"type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv6"}]}},
-                ...[
-                    {p:"tlshello",l:"5-15",i:"5-10"}, {p:"1-1",l:"10-20",i:"5-10"}, {p:"1-1",l:"20-40",i:"10-15"},
-                    {p:"1-1",l:"40-60",i:"10-20"}, {p:"1-2",l:"1-10",i:"1-5"}, {p:"1-3",l:"30-50",i:"10-15"},
-                    {p:"tlshello",l:"10-25",i:"10-20"}, {p:"1-1",l:"80-100",i:"20-30"}, {p:"1-1",l:"100-200",i:"1-1"}
-                ].map((frag, idx) => (
-                    {"tag": \`frag-rule-\${idx + 1}\`, "protocol": "freedom", "settings": {"fragment": {"packets": frag.p, "length": frag.l, "interval": frag.i}}}
-                )),
+                {"tag": "frag-rule-1", "protocol": "freedom", "settings": {"fragment": {"packets": "tlshello", "length": "5-15", "interval": "5-10"}}},
+                {"tag": "frag-rule-2", "protocol": "freedom", "settings": {"fragment": {"packets": "1-1", "length": "10-20", "interval": "5-10"}}},
+                {"tag": "frag-rule-3", "protocol": "freedom", "settings": {"fragment": {"packets": "1-1", "length": "20-40", "interval": "10-15"}}},
+                {"tag": "frag-rule-4", "protocol": "freedom", "settings": {"fragment": {"packets": "1-1", "length": "40-60", "interval": "10-20"}}},
+                {"tag": "frag-rule-5", "protocol": "freedom", "settings": {"fragment": {"packets": "1-2", "length": "1-10", "interval": "1-5"}}},
+                {"tag": "frag-rule-6", "protocol": "freedom", "settings": {"fragment": {"packets": "1-3", "length": "30-50", "interval": "10-15"}}},
+                {"tag": "frag-rule-7", "protocol": "freedom", "settings": {"fragment": {"packets": "tlshello", "length": "10-25", "interval": "10-20"}}},
+                {"tag": "frag-rule-8", "protocol": "freedom", "settings": {"fragment": {"packets": "1-1", "length": "80-100", "interval": "20-30"}}},
+                {"tag": "frag-rule-9", "protocol": "freedom", "settings": {"fragment": {"packets": "1-1", "length": "100-200", "interval": "1-1"}}},
                 ...Array.from({length: 9}, (_, i) => i + 1).map(i => (
-                    {"tag": \`probe-\${i}\`, "protocol": "freedom", "settings": {"domainStrategy": "UseIPv4v6"}, "streamSettings": {"sockopt": {"dialerProxy": \`frag-rule-\${i}\`}, "tlsSettings": {"serverName": serverName, "alpn": ["h3", "h2", "http/1.1"], "fingerprint": fingerprint}}}
+                  {"tag": \`probe-\${i}\`, "protocol": "freedom", "settings": {"domainStrategy": "UseIPv4v6"}, "streamSettings": {"sockopt": {"dialerProxy": \`frag-rule-\${i}\`}, "tlsSettings": {"serverName": serverName, "alpn": alpnArray, "fingerprint": fingerprint}}}
                 ))
               ],
               "routing": {
@@ -659,34 +686,35 @@ function getHomePage(requestUrl) {
             };
             document.getElementById('bestFragmentConfig').textContent = JSON.stringify(bestFragmentConfig, null, 2);
 
-            // 3. Update No Fragment Config
             const noFragmentConfig = {
               "remarks": "no-fragment-personal-doh",
-              "log": {"loglevel": "warning"}, "policy": {"levels": {"0": {}}},
-              "dns": baseDns, "inbounds": baseInbounds,
+              "log": { "loglevel": "warning" },
+              "policy": { "levels": { "0": {} } },
+              "dns": baseDnsObject,
+              "inbounds": baseInbounds,
               "outbounds": [
-                {"tag": "block-out", "protocol": "block"},
-                {"tag": "direct-out", "protocol": "direct", "streamSettings": {"sockopt": {"domainStrategy": "ForceIP", "happyEyeballs": {"tryDelayMs": 100}}}},
-                {"tag": "dns-out", "protocol": "dns", "settings": {"nonIPQuery": "reject", "blockTypes": [0, 65]}},
-                {"tag": "proxy-out", "protocol": "freedom", "streamSettings": {"sockopt": {"happyEyeballs": {"tryDelayMs": 200}}, "tlsSettings": {"serverName": serverName, "alpn": ["h3", "h2", "http/1.1"], "fingerprint": fingerprint}}, "settings": {"domainStrategy": "UseIPv4v6"}},
-                {"tag": "udp-noises-out", "protocol": "direct", "settings": {"targetStrategy": "ForceIP", "noises": [{"type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv4"}, {"type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv6"}]}}
+                { "tag": "block-out", "protocol": "block" },
+                { "tag": "dns-out", "protocol": "dns" },
+                { "tag": "direct-out", "protocol": "direct", "streamSettings": { "sockopt": { "domainStrategy": "ForceIP", "happyEyeballs": { "tryDelayMs": 250, "prioritizeIPv6": true, "interleave": 2, "maxConcurrentTry": 4 } } } },
+                { "tag": "base-outbound", "protocol": "freedom", "settings": {} },
+                { "tag": "probe-1", "protocol": "freedom", "settings": { "domainStrategy": "UseIPv4v6" }, "streamSettings": { "sockopt": { "dialerProxy": "base-outbound" }, "tlsSettings": { "serverName": serverName, "alpn": alpnArray, "fingerprint": fingerprint } } }
               ],
               "routing": {
                 "domainStrategy": "IPOnDemand",
                 "rules": [
-                  {"outboundTag": "block-out", "port": 0}, {"outboundTag": "block-out", "domain": ["geosite:category-ads-all"]},
-                  {"outboundTag": "block-out", "ip": ["geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18"]},
-                  {"outboundTag": "dns-out", "inboundTag": ["dns-in"]}, {"outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53},
-                  {"outboundTag": "proxy-out", "inboundTag": ["personal-doh"]},
-                  {"outboundTag": "direct-out", "domain": ["domain:ir", "geosite:private", "geosite:ir"]},
-                  {"outboundTag": "direct-out", "ip": ["geoip:private", "geoip:ir"]},
-                  {"outboundTag": "udp-noises-out", "network": "udp", "protocol": ["quic"]},
-                  {"outboundTag": "udp-noises-out", "network": "udp", "port": "443,2053,2083,2087,2096,8443"},
-                  {"outboundTag": "direct-out", "network": "udp"},
-                  {"outboundTag": "proxy-out", "network": "tcp", "protocol": ["tls"]},
-                  {"outboundTag": "proxy-out", "network": "tcp", "port": "80,443,8080,8443,2052,2053,2082,2083,2086,2087,2095,2096"},
-                  {"outboundTag": "proxy-out", "network": "tcp"},
-                  {"outboundTag": "block-out", "network": "tcp,udp"}
+                  { "type": "field", "outboundTag": "block-out", "port": 0 },
+                  { "type": "field", "outboundTag": "block-out", "domain": [ "geosite:category-ads-all" ] },
+                  { "type": "field", "outboundTag": "block-out", "ip": [ "geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18" ] },
+                  { "type": "field", "outboundTag": "dns-out", "inboundTag": [ "dns-in" ] },
+                  { "type": "field", "outboundTag": "dns-out", "inboundTag": [ "socks-in" ], "port": 53 },
+                  { "type": "field", "outboundTag": "direct-out", "domain": [ "domain:ir", "geosite:private", "geosite:ir" ] },
+                  { "type": "field", "outboundTag": "direct-out", "ip": [ "geoip:private", "geoip:ir" ] },
+                  { "type": "field", "outboundTag": "direct-out", "network": "udp" },
+                  { "type": "field", "outboundTag": "probe-1", "inboundTag": [ "personal-doh" ] },
+                  { "type": "field", "outboundTag": "probe-1", "network": "tcp", "protocol": [ "tls" ] },
+                  { "type": "field", "outboundTag": "probe-1", "network": "tcp", "port": "80,443,8080,8443,2052,2053,2082,2083,2086,2087,2095,2096" },
+                  { "type": "field", "outboundTag": "probe-1", "network": "tcp" },
+                  { "type": "field", "outboundTag": "block-out", "network": "tcp,udp" }
                 ]
               }
             };
