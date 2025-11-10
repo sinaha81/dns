@@ -17,11 +17,7 @@
 
 </div>
 
-<p align="center">
-<img src="https://user-images.githubusercontent.com/.../screenshot.png" alt="نمایی از پنل مدیریت" width="700"/>
-<br/>
-<em>(توصیه: یک اسکرین‌شات از پنل مدیریت گرفته و در اینجا قرار دهید)</em>
-</p>
+
 
 📖 توضیحات
 
