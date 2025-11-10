@@ -718,31 +718,49 @@ divar.ir</textarea>
             document.getElementById('bestFragmentConfig').textContent = JSON.stringify(bestFragmentConfig, null, 2);
 
             const noFragmentConfig = {
-              "remarks": "no-fragment-personal-doh",
+              "remarks": "best-fragment-personal-doh-FIXED",
               "log": { "loglevel": "warning" },
-              "policy": { "levels": { "0": {} } },
-              "dns": baseDnsObject,
-              "inbounds": baseInbounds,
+              "policy": {
+                "levels": { "0": { "connIdle": 300, "downlinkOnly": 1, "handshake": 4, "uplinkOnly": 1 } },
+                "system": { "statsOutboundUplink": true, "statsOutboundDownlink": true }
+              },
+              "dns": {
+                "unexpectedIPs": ["geoip:cn", "10.10.34.34", "10.10.34.35", "10.10.34.36"],
+                "hosts": { "geosite:category-ads-all": "#3", "geosite:category-ads-ir": "#3", "cloudflare-dns.com": "www.cloudflare.com", "dns.google": "www.google.com" },
+                "servers": [
+                  { "address": "fakedns", "domains": ["domain:ir", "geosite:private", "geosite:ir", "domain:dynx.pro", "geosite:sanctioned", "geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord"], "finalQuery": true },
+                  { "tag": "personal-doh", "address": "https://dns.tvsina.workers.dev/dns-query", "domains": ["geosite:telegram", "geosite:meta", "geosite:youtube", "geosite:twitter", "geosite:reddit", "geosite:twitch", "geosite:tiktok", "geosite:discord", "geosite:sanctioned"], "timeoutMs": 4000, "finalQuery": true },
+                  { "address": "localhost", "domains": ["domain:ir", "geosite:private", "geosite:ir"], "finalQuery": true }
+                ],
+                "queryStrategy": "UseSystem", "useSystemHosts": true
+              },
+              "inbounds": [
+                { "tag": "dns-in", "listen": "127.0.0.1", "port": 10853, "protocol": "tunnel", "settings": { "address": "127.0.0.1", "port": 53, "network": "tcp,udp" }, "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } } },
+                { "tag": "socks-in", "listen": "127.0.0.1", "port": 10808, "protocol": "mixed", "sniffing": { "enabled": true, "destOverride": ["fakedns"], "routeOnly": false }, "settings": { "udp": true, "ip": "127.0.0.1" }, "streamSettings": { "sockopt": { "tcpKeepAliveInterval": 1, "tcpKeepAliveIdle": 46 } } }
+              ],
               "outbounds": [
                 { "tag": "block-out", "protocol": "block" },
                 { "tag": "dns-out", "protocol": "dns" },
-                { "tag": "direct-out", "protocol": "direct", "streamSettings": { "sockopt": { "domainStrategy": "ForceIP", "happyEyeballs": { "tryDelayMs": 250, "prioritizeIPv6": true, "interleave": 2, "maxConcurrentTry": 4 } } } },
+                { "tag": "direct-out", "protocol": "direct", "streamSettings": { "sockopt": { "tcpFastOpen": true, "domainStrategy": "ForceIP", "happyEyeballs": { "tryDelayMs": 250, "prioritizeIPv6": true, "interleave": 2, "maxConcurrentTry": 4 } } } },
+                { "tag": "udp-noises-out", "protocol": "direct", "settings": { "targetStrategy": "ForceIP", "noises": [{ "type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv4" }, { "type": "rand", "packet": "1220-1250", "delay": "10-20", "applyTo": "ipv6" }] } },
                 { "tag": "base-outbound", "protocol": "freedom", "settings": {} },
-                { "tag": "probe-1", "protocol": "freedom", "settings": { "domainStrategy": "UseIPv4v6" }, "streamSettings": { "sockopt": { "dialerProxy": "base-outbound" }, "tlsSettings": { "serverName": serverName, "alpn": alpnArray, "fingerprint": fingerprint } } }
+                { "tag": "probe-1", "protocol": "freedom", "settings": { "domainStrategy": "UseIPv4v6" }, "streamSettings": { "sockopt": { "dialerProxy": "base-outbound" }, "tlsSettings": { "serverName": "soft98.ir", "alpn": ["h3", "h2", "http/1.1"], "fingerprint": "safari" } } }
               ],
               "routing": {
                 "domainStrategy": "IPOnDemand",
                 "rules": [
                   { "type": "field", "outboundTag": "block-out", "port": 0 },
-                  { "type": "field", "outboundTag": "block-out", "domain": [ "geosite:category-ads-all" ] },
-                  { "type": "field", "outboundTag": "block-out", "ip": [ "geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18" ] },
-                  { "type": "field", "outboundTag": "dns-out", "inboundTag": [ "dns-in" ] },
-                  { "type": "field", "outboundTag": "dns-out", "inboundTag": [ "socks-in" ], "port": 53 },
-                  { "type": "field", "outboundTag": "direct-out", "domain": [ "domain:ir", "geosite:private", "geosite:ir" ] },
-                  { "type": "field", "outboundTag": "direct-out", "ip": [ "geoip:private", "geoip:ir" ] },
+                  { "type": "field", "outboundTag": "block-out", "domain": ["geosite:category-ads-all"] },
+                  { "type": "field", "outboundTag": "block-out", "ip": ["geoip:irgfw-block-injected-ips", "0.0.0.0", "::", "198.18.0.0/15", "fc00::/18"] },
+                  { "type": "field", "outboundTag": "dns-out", "inboundTag": ["dns-in"] },
+                  { "type": "field", "outboundTag": "dns-out", "inboundTag": ["socks-in"], "port": 53 },
+                  { "type": "field", "outboundTag": "direct-out", "domain": ["domain:ir", "geosite:private", "geosite:ir"] },
+                  { "type": "field", "outboundTag": "direct-out", "ip": ["geoip:private", "geoip:ir"] },
+                  { "type": "field", "outboundTag": "udp-noises-out", "network": "udp", "protocol": ["quic"] },
+                  { "type": "field", "outboundTag": "udp-noises-out", "network": "udp", "port": "443,2053,2083,2087,2096,8443" },
                   { "type": "field", "outboundTag": "direct-out", "network": "udp" },
-                  { "type": "field", "outboundTag": "probe-1", "inboundTag": [ "personal-doh" ] },
-                  { "type": "field", "outboundTag": "probe-1", "network": "tcp", "protocol": [ "tls" ] },
+                  { "type": "field", "outboundTag": "probe-1", "inboundTag": ["personal-doh"] },
+                  { "type": "field", "outboundTag": "probe-1", "network": "tcp", "protocol": ["tls"] },
                   { "type": "field", "outboundTag": "probe-1", "network": "tcp", "port": "80,443,8080,8443,2052,2053,2082,2083,2086,2087,2095,2096" },
                   { "type": "field", "outboundTag": "probe-1", "network": "tcp" },
                   { "type": "field", "outboundTag": "block-out", "network": "tcp,udp" }
