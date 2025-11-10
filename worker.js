@@ -711,7 +711,7 @@ divar.ir</textarea>
             document.getElementById('bestFragmentConfig').textContent = JSON.stringify(bestFragmentConfig, null, 2);
 
             const noFragmentConfig = {
-              "remarks": "best-fragment-personal-doh-FIXED",
+              "remarks": "no-fragment-personal-doh",
               "log": { "loglevel": "warning" },
               "policy": {
                 "levels": { "0": { "connIdle": 300, "downlinkOnly": 1, "handshake": 4, "uplinkOnly": 1 } },
