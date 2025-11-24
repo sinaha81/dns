@@ -1,6 +1,7 @@
 /**
- * 🚀 Ultimate DoH Proxy Worker - Master Edition (With Tooltips & Enhanced Guides)
+ * 🚀 Ultimate DoH Proxy Worker - Ultra Master Edition (Solid Static UI)
  * Features: High Performance Load Balancing, AdBlock Support, IP Geolocation, Real-time Tester, V2Ray Config Generator
+ * Updates: NO Animations/Shaking, Updated Guides, Responsive
  */
 
 // 1. لیست جامع و دسته‌بندی شده DNSها
@@ -211,7 +212,7 @@ function getHomePage(requestUrl) {
     <style>
         :root {
             --bg-main: #0b0e14;
-            --bg-glass: rgba(22, 27, 34, 0.7);
+            --bg-glass: rgba(22, 27, 34, 0.8);
             --primary: #58a6ff;
             --secondary: #1f6feb;
             --accent: #bc8cff;
@@ -231,7 +232,7 @@ function getHomePage(requestUrl) {
             position: relative;
             overflow-x: hidden;
         }
-        /* Aurora Background Animation */
+        /* Aurora Background Animation (Kept as background only) */
         body::before {
             content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
             background: radial-gradient(circle at center, rgba(88, 166, 255, 0.15), transparent 50%),
@@ -246,15 +247,13 @@ function getHomePage(requestUrl) {
         .header { text-align: center; padding: 2rem 0; position: relative; }
         .header h1 { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
         .status-badge { background: rgba(53, 219, 105, 0.1); color: #3fb950; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.9rem; font-weight: 600; border: 1px solid rgba(53, 219, 105, 0.2); display: inline-flex; align-items: center; gap: 0.5rem; cursor: help; }
-        .status-badge::before { content: ''; width: 8px; height: 8px; background: #3fb950; border-radius: 50%; box-shadow: 0 0 10px #3fb950; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .status-badge::before { content: ''; width: 8px; height: 8px; background: #3fb950; border-radius: 50%; box-shadow: 0 0 5px #3fb950; }
 
-        /* Card System */
-        .card { background: var(--bg-glass); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); transition: transform 0.3s; }
-        .card:hover { border-color: rgba(88, 166, 255, 0.3); }
-        summary { padding: 1.5rem; cursor: pointer; font-weight: 700; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; list-style: none; transition: background 0.2s; }
+        /* Card System - No Hover Animations */
+        .card { background: var(--bg-glass); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; backdrop-filter: blur(20px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        summary { padding: 1.5rem; cursor: pointer; font-weight: 700; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; list-style: none; background: rgba(255,255,255,0.01); }
         summary:hover { background: rgba(255,255,255,0.03); }
-        summary::after { content: '+'; font-size: 1.5rem; color: var(--text-muted); transition: 0.3s; }
+        summary::after { content: '+'; font-size: 1.5rem; color: var(--text-muted); transition: 0.2s; }
         details[open] summary::after { transform: rotate(45deg); color: var(--primary); }
         details[open] summary { border-bottom: 1px solid var(--border); }
         .card-body { padding: 1.5rem; }
@@ -266,8 +265,8 @@ function getHomePage(requestUrl) {
             position: absolute;
             bottom: 100%;
             left: 50%;
-            transform: translateX(-50%) translateY(-5px);
-            background: var(--secondary);
+            transform: translateX(-50%) translateY(-8px);
+            background: rgba(31, 111, 235, 0.95);
             color: white;
             padding: 0.5rem 0.8rem;
             border-radius: 6px;
@@ -276,58 +275,91 @@ function getHomePage(requestUrl) {
             z-index: 100;
             opacity: 0;
             pointer-events: none;
-            transition: 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: opacity 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             font-weight: 500;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        [data-tooltip]:hover::before { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+        [data-tooltip]:hover::after {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-4px);
+            border: 6px solid transparent;
+            border-top-color: rgba(31, 111, 235, 0.95);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        [data-tooltip]:hover::before, [data-tooltip]:hover::after { opacity: 1; }
 
         /* Controls & Inputs */
         .control-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
         .input-wrapper { display: flex; flex-direction: column; gap: 0.5rem; }
         label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; cursor: help; }
-        input, select { background: rgba(13, 17, 23, 0.6); border: 1px solid var(--border); padding: 0.8rem; border-radius: 8px; color: #fff; font-family: inherit; transition: 0.2s; }
-        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15); }
+        input, select { background: rgba(13, 17, 23, 0.6); border: 1px solid var(--border); padding: 0.8rem; border-radius: 8px; color: #fff; font-family: inherit; }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15); }
 
         /* Copy & Action Buttons */
-        .url-row { display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 10px; border: 1px solid var(--border); align-items: center; }
+        .url-row { display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 10px; border: 1px solid var(--border); align-items: center; flex-wrap: wrap; }
         .url-text { flex: 1; font-family: monospace; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 0.5rem; direction: ltr; }
-        .btn { border: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-family: inherit; }
+        .btn { border: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .btn-primary { background: var(--secondary); color: white; }
-        .btn-primary:hover { background: var(--primary); transform: translateY(-1px); }
+        .btn-primary:hover { background: var(--primary); }
         .btn-copy { background: rgba(255,255,255,0.1); color: var(--text-main); }
-        .btn-copy:hover { background: rgba(255,255,255,0.2); }
+        .btn-copy:hover { background: rgba(255,255,255,0.15); }
 
-        /* Code Blocks */
-        pre { background: #0d1117; padding: 1rem; border-radius: 10px; overflow-x: auto; color: #a5d6ff; font-family: 'Fira Code', monospace; font-size: 0.9rem; border: 1px solid var(--border); position: relative; max-height: 400px; }
+        /* Code Blocks Wrapper & New Copy Button */
+        .config-wrapper { position: relative; direction: ltr; }
+        .config-copy-btn { 
+            position: absolute; 
+            top: 10px; 
+            right: 30px; /* Positioned leftward */
+            z-index: 10;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            box-shadow: 0 4px 15px rgba(31, 111, 235, 0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+            color: white;
+        }
+        .config-copy-btn:hover {
+            box-shadow: 0 6px 20px rgba(31, 111, 235, 0.6);
+            filter: brightness(1.1);
+        }
         
-        /* Provider Grid */
+        pre { background: #0d1117; padding: 3.5rem 1rem 1rem 1rem; border-radius: 10px; overflow-x: auto; color: #a5d6ff; font-family: 'Fira Code', monospace; font-size: 0.9rem; border: 1px solid var(--border); max-height: 400px; text-align: left; }
+        
+        /* Provider Grid - Static */
         .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
-        .provider-card { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 1rem; border: 1px solid var(--border); transition: 0.2s; cursor: help; }
-        .provider-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.05); }
+        .provider-card { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 1rem; border: 1px solid var(--border); cursor: help; }
+        .provider-card:hover { background: rgba(255,255,255,0.05); border-color: var(--primary); }
         .p-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-left: 0.8rem; }
         .p-name { font-weight: 700; color: #fff; }
         .p-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
         .p-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
 
         /* Guide Boxes */
-        .info-box { background: rgba(88, 166, 255, 0.1); border-left: 3px solid var(--primary); padding: 1rem; border-radius: 6px; margin: 1rem 0; font-size: 0.9rem; line-height: 1.6; }
-        .warn-box { background: rgba(247, 185, 72, 0.1); border-left: 3px solid #f7b948; padding: 1rem; border-radius: 6px; margin: 1rem 0; font-size: 0.9rem; line-height: 1.6; }
+        .info-box { background: rgba(88, 166, 255, 0.1); border-left: 4px solid var(--primary); padding: 1rem; border-radius: 6px; margin: 1rem 0; font-size: 0.9rem; line-height: 1.7; }
+        .warn-box { background: rgba(247, 185, 72, 0.1); border-left: 4px solid #f7b948; padding: 1rem; border-radius: 6px; margin: 1rem 0; font-size: 0.9rem; line-height: 1.7; color: #f7b948; }
+        .warn-box strong { color: #fff; }
 
         /* Tester Tool */
         .tester-result { margin-top: 1rem; display: none; }
-        .json-key { color: #ff7b72; }
-        .json-val { color: #a5d6ff; }
-        .json-str { color: #79c0ff; }
-
-        @media (max-width: 600px) { .header h1 { font-size: 2rem; } }
+        
+        @media (max-width: 600px) { 
+            .header h1 { font-size: 2rem; } 
+            .url-row { flex-direction: column; align-items: stretch; }
+            .url-text { text-align: center; padding: 0.5rem 0; }
+            [data-tooltip]:hover::before { display: none; } /* Disable hover tooltip on mobile */
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
             <h1>DoH Proxy Ultimate</h1>
-            <div class="status-badge" data-tooltip="سرویس رمزنگاری شده و آماده به کار است">سیستم فعال و رمزنگاری شده</div>
+            <div class="status-badge" data-tooltip="وضعیت سرویس: کاملاً فعال و ایمن">سیستم فعال و رمزنگاری شده</div>
         </header>
 
         <!-- بخش تست آنلاین -->
@@ -336,35 +368,35 @@ function getHomePage(requestUrl) {
             <div class="card-body">
                 <p style="color:var(--text-muted); margin-bottom:1rem;">بررسی عملکرد DNS و دریافت موقعیت جغرافیایی IP خروجی.</p>
                 <div class="url-row">
-                    <input type="text" id="test-domain" value="www.google.com" style="border:none; background:transparent; width:100%; color:#fff;" placeholder="آدرس دامنه..." data-tooltip="دامنه مورد نظر برای تست (مثلا google.com)">
-                    <button class="btn btn-primary" onclick="runTest()" data-tooltip="ارسال درخواست ریزالو DNS">شروع تست</button>
+                    <input type="text" id="test-domain" value="www.google.com" style="border:none; background:transparent; width:100%; color:#fff;" placeholder="آدرس دامنه..." data-tooltip="دامنه مورد نظر برای تست (مثلاً google.com)">
+                    <button class="btn btn-primary" onclick="runTest()" data-tooltip="شروع عملیات تست DNS">شروع تست</button>
                 </div>
                 <div id="test-output" class="tester-result">
-                    <pre id="test-json">در حال پردازش...</pre>
+                    <pre id="test-json" style="padding: 1rem;">در حال پردازش...</pre>
                 </div>
             </div>
         </details>
 
         <!-- تنظیمات اصلی -->
         <details class="card" open>
-            <summary data-tooltip="تنظیمات هسته و دریافت آدرس اتصال">⚙️ تنظیمات و متغیرها</summary>
+            <summary data-tooltip="تنظیمات هسته و آدرس اتصال">⚙️ تنظیمات و متغیرها</summary>
             <div class="card-body">
                 
                 <div class="info-box">
-                    <strong>📌 راهنمای استفاده دستی:</strong><br>
-                    این آدرس را در بخش <code>Secure DNS</code> مرورگرهای <strong>Chrome</strong> یا <strong>Firefox</strong> وارد کنید.<br>
-                    یا از آن در برنامه‌هایی مثل <strong>Intra</strong>  در بخش DoH Server استفاده کنید.
+                    <strong>📌 راهنمای اتصال دستی:</strong><br>
+                    ۱. برای مرورگر <strong>Chrome/Firefox</strong>: به بخش <code>Settings > Privacy > Secure DNS</code> بروید و این آدرس را وارد کنید.<br>
+                    ۲. برای اندروید: از برنامه <strong>Intra</strong> در بخش <code>DoH Server</code> این آدرس را قرار دهید.
                 </div>
 
                 <div class="url-row" style="margin-bottom:1.5rem;">
                     <span id="dohUrl" class="url-text" data-tooltip="آدرس سرور DoH شما">${fullDohUrl}</span>
-                    <button class="btn btn-copy" onclick="copyText('dohUrl')" data-tooltip="کپی آدرس در حافظه">کپی آدرس</button>
+                    <button class="btn btn-copy" onclick="copyText('dohUrl')" data-tooltip="کپی آدرس در حافظه موقت">کپی آدرس</button>
                 </div>
                 
                 <div class="control-group">
                     <div class="input-wrapper">
-                        <label data-tooltip="شبیه‌سازی اثر انگشت مرورگر برای فریب فایروال">TLS Fingerprint (همه کانفیگ‌ها)</label>
-                        <select id="fp-select" onchange="updateConfigs()">
+                        <label data-tooltip="تغییر اثر انگشت TLS برای عبور از فایروال">TLS Fingerprint (همه کانفیگ‌ها)</label>
+                        <select id="fp-select" onchange="updateConfigs()" data-tooltip="پیشنهاد: Randomized">
                             <option value="randomized" selected>Randomized (توصیه شده)</option>
                             <option value="chrome">Chrome</option>
                             <option value="ios">iOS</option>
@@ -372,20 +404,20 @@ function getHomePage(requestUrl) {
                         </select>
                     </div>
                     <div class="input-wrapper">
-                        <label data-tooltip="فاصله زمانی بین تست‌های پینگ در کانفیگ Best Frag">Probe Interval (Best Frag Only)</label>
-                        <input type="text" id="probe-int" value="20s" oninput="updateConfigs()">
+                        <label data-tooltip="فاصله زمانی بین تست‌های پینگ (ثانیه)">Probe Interval (Best Frag Only)</label>
+                        <input type="text" id="probe-int" value="20s" oninput="updateConfigs()" data-tooltip="مثال: 20s">
                     </div>
                     <div class="input-wrapper">
-                        <label data-tooltip="تعداد بسته‌های تکه‌تکه شده در کانفیگ Fix Frag">Frag Packets (Fix Frag Only)</label>
-                        <input type="text" id="frag-pac" value="2-3" oninput="updateConfigs()">
+                        <label data-tooltip="تعداد بسته‌های تکه شده">Frag Packets (Fix Frag Only)</label>
+                        <input type="text" id="frag-pac" value="2-3" oninput="updateConfigs()" data-tooltip="مثال: 2-3">
                     </div>
                     <div class="input-wrapper">
-                        <label data-tooltip="طول هر تکه بسته در کانفیگ Fix Frag">Frag Length (Fix Frag Only)</label>
-                        <input type="text" id="frag-len" value="10-30" oninput="updateConfigs()">
+                        <label data-tooltip="طول هر تکه (بایت)">Frag Length (Fix Frag Only)</label>
+                        <input type="text" id="frag-len" value="10-30" oninput="updateConfigs()" data-tooltip="مثال: 10-30">
                     </div>
                     <div class="input-wrapper">
-                        <label data-tooltip="فاصله زمانی ارسال تکه‌ها در کانفیگ Fix Frag">Frag Interval (Fix Frag Only)</label>
-                        <input type="text" id="frag-inv" value="5-15" oninput="updateConfigs()">
+                        <label data-tooltip="فاصله زمانی ارسال تکه‌ها (میلی‌ثانیه)">Frag Interval (Fix Frag Only)</label>
+                        <input type="text" id="frag-inv" value="5-15" oninput="updateConfigs()" data-tooltip="مثال: 5-15">
                     </div>
                 </div>
             </div>
@@ -393,38 +425,38 @@ function getHomePage(requestUrl) {
 
         <!-- راهنمای کانفیگ‌ها -->
         <div class="warn-box">
-             ⚠️ <strong>نکات مهم کانفیگ‌ها:</strong><br>
+             ⚠️ <strong>نکات حیاتی برای عملکرد صحیح:</strong><br>
              ۱. حتماً از <strong>V2RayN نسخه 1.10.23</strong> به بالا یا کلاینت‌های سازگار با Fragment استفاده کنید.<br>
-             ۲. فایل‌های <strong>GeoIP</strong> و <strong>GeoSite</strong>  مخصوص <strong>ایران</strong> برنامه خود را آپدیت کنید تا روتینگ به درستی کار کند.<br>
-             ۳. این کانفیگ‌ها برای دور زدن اختلالات DNS طراحی شده‌اند.
+             ۲. فایل‌های <strong>GeoIP</strong> و <strong>GeoSite</strong> (مخصوص ایران) در برنامه را حتماً آپدیت کنید.<br>
+             ۳. این کانفیگ‌ها جهت رفع اختلالات شدید DNS طراحی شده‌اند.
         </div>
 
         <!-- کانفیگ‌ها -->
         <details class="card">
-            <summary data-tooltip="مناسب برای اکثر اپراتورها با تنظیمات دستی">📄 کانفیگ ۱: Fix Fragment</summary>
+            <summary data-tooltip="تنظیمات دستی تکه‌تکه کردن بسته‌ها">📄 کانفیگ ۱: Fix Fragment</summary>
             <div class="card-body">
-                <div style="position:relative;">
-                    <button class="btn btn-primary" style="position:absolute; top:10px; left:10px; z-index:10;" onclick="copyText('conf-fix')" data-tooltip="کپی کد کانفیگ">کپی کانفیگ</button>
+                <div class="config-wrapper">
+                    <button class="btn btn-primary config-copy-btn" onclick="copyText('conf-fix')" data-tooltip="کپی کانفیگ Fix Fragment">کپی کانفیگ</button>
                     <pre id="conf-fix"></pre>
                 </div>
             </div>
         </details>
 
         <details class="card">
-            <summary data-tooltip="انتخاب خودکار بهترین حالت بر اساس پینگ">📄 کانفیگ ۲: Best Fragment (هوشمند)</summary>
+            <summary data-tooltip="انتخاب هوشمند بهترین روش فرگمنت">📄 کانفیگ ۲: Best Fragment (هوشمند)</summary>
             <div class="card-body">
-                <div style="position:relative;">
-                    <button class="btn btn-primary" style="position:absolute; top:10px; left:10px; z-index:10;" onclick="copyText('conf-best')" data-tooltip="کپی کد کانفیگ">کپی کانفیگ</button>
+                <div class="config-wrapper">
+                    <button class="btn btn-primary config-copy-btn" onclick="copyText('conf-best')" data-tooltip="کپی کانفیگ Best Fragment">کپی کانفیگ</button>
                     <pre id="conf-best"></pre>
                 </div>
             </div>
         </details>
 
         <details class="card">
-            <summary data-tooltip="ساده‌ترین حالت بدون تکه‌تکه کردن بسته‌ها">📄 کانفیگ ۳: No Fragment (ساده)</summary>
+            <summary data-tooltip="حالت استاندارد بدون فرگمنت">📄 کانفیگ ۳: No Fragment (ساده)</summary>
             <div class="card-body">
-                <div style="position:relative;">
-                    <button class="btn btn-primary" style="position:absolute; top:10px; left:10px; z-index:10;" onclick="copyText('conf-no')" data-tooltip="کپی کد کانفیگ">کپی کانفیگ</button>
+                <div class="config-wrapper">
+                    <button class="btn btn-primary config-copy-btn" onclick="copyText('conf-no')" data-tooltip="کپی کانفیگ No Fragment">کپی کانفیگ</button>
                     <pre id="conf-no"></pre>
                 </div>
             </div>
@@ -432,9 +464,9 @@ function getHomePage(requestUrl) {
 
         <!-- لیست DNS -->
         <details class="card" open>
-            <summary data-tooltip="لیست سرورهایی که درخواست‌های شما به آنها ارسال می‌شود">🌐 شبکه توزیع DNS (Load Balancing)</summary>
+            <summary data-tooltip="مشاهده سرورهای فعال در شبکه توزیع">🌐 شبکه توزیع DNS (Load Balancing)</summary>
             <div class="card-body">
-                <p style="color:var(--text-muted);">سیستم به صورت خودکار و بر اساس وزن‌دهی، درخواست‌ها را بین سرورهای زیر پخش می‌کند:</p>
+                <p style="color:var(--text-muted);">درخواست‌های شما جهت افزایش سرعت و پایداری بین سرورهای زیر تقسیم می‌شوند:</p>
                 <div class="provider-grid">
                     ${providersHtml}
                 </div>
@@ -450,10 +482,16 @@ function getHomePage(requestUrl) {
             const output = document.getElementById('test-output');
             const pre = document.getElementById('test-json');
             
-            if(!domain) return Swal.fire('خطا', 'لطفا دامنه را وارد کنید', 'error');
+            if(!domain) return Swal.fire({
+                icon: 'error',
+                title: 'خطا',
+                text: 'لطفا آدرس دامنه را وارد کنید!',
+                background: '#161b22',
+                color: '#fff'
+            });
             
             output.style.display = 'block';
-            pre.innerHTML = '<span style="color:var(--accent)">⏳ در حال ارتباط با سرور...</span>';
+            pre.innerHTML = '<span style="color:var(--accent)">⏳ در حال ارسال درخواست به شبکه...</span>';
             
             try {
                 // 1. DNS Query
@@ -470,7 +508,7 @@ function getHomePage(requestUrl) {
                     const ip = data.Answer.find(r => r.type === 1)?.data;
                     if(ip) {
                         try {
-                            pre.innerHTML += '<br><span style="color:var(--primary)">📍 در حال دریافت موقعیت IP...</span>';
+                            pre.innerHTML += '<br><span style="color:var(--primary)">📍 در حال شناسایی موقعیت IP...</span>';
                             const geoRes = await fetch('/ip-info?ip=' + ip);
                             data.GeoLocation = await geoRes.json();
                         } catch(e) {}
@@ -479,7 +517,7 @@ function getHomePage(requestUrl) {
                 
                 pre.textContent = JSON.stringify(data, null, 2);
             } catch(e) {
-                pre.innerHTML = '<span style="color:#ff4d4d">❌ خطا: ' + e.message + '</span>';
+                pre.innerHTML = '<span style="color:#ff4d4d">❌ خطا در ارتباط: ' + e.message + '</span>';
             }
         }
 
@@ -487,10 +525,16 @@ function getHomePage(requestUrl) {
             const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text).then(() => {
                 const Toast = Swal.mixin({
-                    toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
-                    background: '#1f6feb', color: '#fff'
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    background: '#1f6feb',
+                    color: '#fff',
+                    iconColor: '#fff'
                 });
-                Toast.fire({ icon: 'success', title: 'کپی شد!' });
+                Toast.fire({ icon: 'success', title: 'با موفقیت کپی شد!' });
             });
         }
 
@@ -605,5 +649,4 @@ function getHomePage(requestUrl) {
         document.addEventListener('DOMContentLoaded', updateConfigs);
     </script>
 </body>
-</html>`;
-}
+</html>`;  }
